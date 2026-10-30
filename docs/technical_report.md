@@ -18,9 +18,11 @@
 
 | Role       | Login Access | Capabilities                                                                                    |
 | ---------- | ------------ | ----------------------------------------------------------------------------------------------- |
-| **Admin**  | Yes (Email + OTP) | Full system control — manage users, classes, sections, subjects, admissions, website content, AI settings |
-| **Teacher**| Yes (Email + OTP) | Manage assigned classes/sections, create tests/exams, enter marks, view student data              |
+| **Admin**  | Yes (Email + OTP) | Full system control — manage users, classes, sections, subjects, admissions, website content, AI settings, appoint head teachers, mark teacher attendance, manage fees/fines/scholarships/salaries/maintenance |
+| **Teacher**| Yes (Email + OTP) | Manage assigned classes/sections, create tests/exams, enter marks, view student data; **head teachers** additionally mark student attendance for their section; view own salary records |
 | **Student**| No (Phase 1)      | Data is managed by admins and teachers; no login required in current scope                       |
+| **Support Staff** | No         | Non-login records — name, phone, designation, salary tracked by admin                            |
+| **Principal**     | No         | Non-login record — profile and salary tracked by admin                                           |
 
 ### 2.3 Academic Structure
 
@@ -91,14 +93,29 @@ profiles ──────── users (Supabase Auth)
     │
     ├── admins
     ├── teachers ──┬── teacher_sections (pivot)
-    │              └── teacher_subjects (pivot)
+    │              ├── teacher_subjects (pivot)
+    │              ├── section_head_teachers
+    │              ├── student_attendance (marked_by)
+    │              ├── teacher_attendance
+    │              └── salary_payments (employee_type = 'teacher')
     └── students ──┬── student_subjects (pivot)
-                   └── student_sections (pivot)
+                   ├── student_sections (pivot)
+                   ├── student_attendance
+                   ├── student_fees ──── fee_payments
+                   ├── student_fines
+                   └── student_scholarships
 
-classes ──── sections ──── students
-                │
-                ├── tests ──── test_marks
-                └── exams ──── exam_marks
+classes ──┬── sections ──┬── students
+          │              └── section_head_teachers
+          │
+          │    ├── tests ──── test_marks
+          │    └── exams ──── exam_marks
+          │
+          └── fee_structures
+
+support_staff ──── salary_payments (employee_type = 'support_staff')
+principal ──────── salary_payments (employee_type = 'principal')
+maintenance_costs (monthly school expenses)
 
 site_settings (singleton — customizable front page)
 ai_settings (singleton — AI toggle + config)
@@ -179,6 +196,7 @@ Extends Supabase Auth users with application-specific data.
 | profile_id | uuid        | FK → profiles.id, UNIQUE | Link to auth profile      |
 | employee_id| text        | UNIQUE                   | Employee identifier       |
 | qualification | text     | NULLABLE                 | Educational qualification |
+| salary     | numeric     | NOT NULL, DEFAULT 0      | Monthly base salary       |
 | created_at | timestamptz | DEFAULT now()            | Record creation time      |
 | updated_at | timestamptz | DEFAULT now()            | Last update time          |
 
@@ -323,13 +341,262 @@ Extends Supabase Auth users with application-specific data.
 | used       | boolean     | DEFAULT false            | Whether OTP was consumed |
 | created_at | timestamptz | DEFAULT now()            | Record creation time     |
 
+#### `section_head_teachers`
+
+Tracks head teacher assignments (permanent and temporary) per section.
+
+| Column       | Type               | Constraints                           | Description                                    |
+| ------------ | ------------------ | ------------------------------------- | ---------------------------------------------- |
+| id           | uuid               | PK                                    | Unique identifier                              |
+| section_id   | uuid               | FK → sections.id, NOT NULL            | The section                                    |
+| teacher_id   | uuid               | FK → teachers.id, NOT NULL            | The assigned head teacher                      |
+| type         | head_teacher_type  | NOT NULL, DEFAULT 'permanent'         | Permanent or temporary appointment             |
+| expires_at   | timestamptz        | NULLABLE                              | Expiry timestamp (NULL for permanent)          |
+| duration     | text               | CHECK IN ('1d','3d','7d','15d','30d') | Duration label (temporary only)                |
+| appointed_by | uuid               | FK → profiles.id, NOT NULL            | Admin who made the appointment                 |
+| created_at   | timestamptz        | DEFAULT now()                         | Record creation time                           |
+| updated_at   | timestamptz        | DEFAULT now()                         | Last update time                               |
+| CHECK        |                    | chk_temp_has_expiry                   | Temporary rows require expires_at and duration; permanent rows must have both NULL |
+| UNIQUE INDEX |                    | (section_id) WHERE type = 'permanent' | One permanent head per section                 |
+| UNIQUE INDEX |                    | (section_id) WHERE type = 'temporary' | One temporary head per section                 |
+
+#### `student_attendance`
+
+Daily student attendance records, marked by the section's head teacher.
+
+| Column     | Type              | Constraints                     | Description                          |
+| ---------- | ----------------- | ------------------------------- | ------------------------------------ |
+| id         | uuid              | PK                              | Unique identifier                    |
+| student_id | uuid              | FK → students.id, NOT NULL      | The student                          |
+| section_id | uuid              | FK → sections.id, NOT NULL      | Section at the time of marking       |
+| date       | date              | NOT NULL                        | Attendance date                      |
+| status     | attendance_status | NOT NULL                        | present / absent / leave             |
+| marked_by  | uuid              | FK → teachers.id, NOT NULL      | Head teacher who marked attendance   |
+| remarks    | text              | NULLABLE                        | Optional notes                       |
+| created_at | timestamptz       | DEFAULT now()                   | Record creation time                 |
+| updated_at | timestamptz       | DEFAULT now()                   | Last update time                     |
+| UNIQUE     |                   | (student_id, date)              | One attendance record per student per day |
+
+#### `teacher_attendance`
+
+Daily teacher attendance records, marked by the admin.
+
+| Column     | Type              | Constraints                     | Description                          |
+| ---------- | ----------------- | ------------------------------- | ------------------------------------ |
+| id         | uuid              | PK                              | Unique identifier                    |
+| teacher_id | uuid              | FK → teachers.id, NOT NULL      | The teacher                          |
+| date       | date              | NOT NULL                        | Attendance date                      |
+| status     | attendance_status | NOT NULL                        | present / absent / leave             |
+| marked_by  | uuid              | FK → profiles.id, NOT NULL      | Admin who marked attendance          |
+| remarks    | text              | NULLABLE                        | Optional notes                       |
+| created_at | timestamptz       | DEFAULT now()                   | Record creation time                 |
+| updated_at | timestamptz       | DEFAULT now()                   | Last update time                     |
+| UNIQUE     |                   | (teacher_id, date)              | One attendance record per teacher per day |
+
+#### `support_staff`
+
+Non-login staff members — data tracked by admin only.
+
+| Column      | Type        | Constraints   | Description                    |
+| ----------- | ----------- | ------------- | ------------------------------ |
+| id          | uuid        | PK            | Unique identifier              |
+| full_name   | text        | NOT NULL      | Staff member's full name       |
+| phone       | text        | NULLABLE      | Contact number                 |
+| designation | text        | NULLABLE      | Role (Peon, Guard, Cleaner, etc.) |
+| salary      | numeric     | NOT NULL, DEFAULT 0 | Monthly base salary      |
+| created_at  | timestamptz | DEFAULT now() | Record creation time           |
+| updated_at  | timestamptz | DEFAULT now() | Last update time               |
+
+#### `principal`
+
+School principal record (typically one row).
+
+| Column        | Type        | Constraints   | Description                    |
+| ------------- | ----------- | ------------- | ------------------------------ |
+| id            | uuid        | PK            | Unique identifier              |
+| full_name     | text        | NOT NULL      | Principal's full name          |
+| phone         | text        | NULLABLE      | Contact number                 |
+| email         | text        | NULLABLE      | Email address                  |
+| qualification | text        | NULLABLE      | Educational qualification      |
+| salary        | numeric     | NOT NULL, DEFAULT 0 | Monthly base salary      |
+| avatar_url    | text        | NULLABLE      | Profile picture URL            |
+| created_at    | timestamptz | DEFAULT now() | Record creation time           |
+| updated_at    | timestamptz | DEFAULT now() | Last update time               |
+
+#### `fee_structures`
+
+Defines fee amounts per class, per type (tuition/transport), per academic year.
+
+| Column        | Type        | Constraints                              | Description                    |
+| ------------- | ----------- | ---------------------------------------- | ------------------------------ |
+| id            | uuid        | PK                                       | Unique identifier              |
+| class_id      | uuid        | FK → classes.id, NOT NULL                | Which class this fee applies to|
+| fee_type      | fee_type    | NOT NULL                                 | tuition / transport            |
+| amount        | numeric     | NOT NULL, CHECK >= 0                     | Fee amount                     |
+| academic_year | text        | NOT NULL                                 | Academic year (e.g., 2026-27)  |
+| created_at    | timestamptz | DEFAULT now()                            | Record creation time           |
+| updated_at    | timestamptz | DEFAULT now()                            | Last update time               |
+| UNIQUE        |             | (class_id, fee_type, academic_year)      | One fee per class/type/year    |
+
+#### `student_fees`
+
+Individual monthly fee records per student.
+
+| Column               | Type        | Constraints                                         | Description                          |
+| -------------------- | ----------- | --------------------------------------------------- | ------------------------------------ |
+| id                   | uuid        | PK                                                  | Unique identifier                    |
+| student_id           | uuid        | FK → students.id, NOT NULL                          | The student                          |
+| fee_structure_id     | uuid        | FK → fee_structures.id, NOT NULL                    | Which fee structure                  |
+| month                | integer     | NOT NULL, CHECK 1-12                                | Fee month                            |
+| year                 | integer     | NOT NULL                                            | Fee year                             |
+| gross_amount         | numeric     | NOT NULL, CHECK >= 0                                | Original amount                      |
+| scholarship_discount | numeric     | NOT NULL, DEFAULT 0, CHECK >= 0                     | Scholarship deduction (tuition only) |
+| fine_amount          | numeric     | NOT NULL, DEFAULT 0, CHECK >= 0                     | Any fines added                      |
+| net_amount           | numeric     | NOT NULL, CHECK >= 0                                | gross - discount + fine              |
+| status               | fee_status  | NOT NULL, DEFAULT 'pending'                         | pending / paid / partial / overdue   |
+| due_date             | date        | NOT NULL                                            | Payment due date                     |
+| created_at           | timestamptz | DEFAULT now()                                       | Record creation time                 |
+| updated_at           | timestamptz | DEFAULT now()                                       | Last update time                     |
+| UNIQUE               |             | (student_id, fee_structure_id, month, year)         | One record per student/fee/period    |
+
+#### `fee_payments`
+
+Actual payment transactions against student fees.
+
+| Column         | Type        | Constraints                     | Description                    |
+| -------------- | ----------- | ------------------------------- | ------------------------------ |
+| id             | uuid        | PK                              | Unique identifier              |
+| student_fee_id | uuid        | FK → student_fees.id, NOT NULL  | Which fee this pays            |
+| amount_paid    | numeric     | NOT NULL, CHECK > 0             | Payment amount                 |
+| payment_date   | date        | NOT NULL, DEFAULT CURRENT_DATE  | Date of payment                |
+| received_by    | uuid        | FK → profiles.id, NOT NULL      | Admin who received payment     |
+| remarks        | text        | NULLABLE                        | Optional notes                 |
+| created_at     | timestamptz | DEFAULT now()                   | Record creation time           |
+
+#### `student_fines`
+
+Fines imposed on students by admin.
+
+| Column     | Type        | Constraints                     | Description                    |
+| ---------- | ----------- | ------------------------------- | ------------------------------ |
+| id         | uuid        | PK                              | Unique identifier              |
+| student_id | uuid        | FK → students.id, NOT NULL      | The student                    |
+| amount     | numeric     | NOT NULL, CHECK > 0             | Fine amount                    |
+| reason     | text        | NOT NULL                        | Reason for the fine            |
+| imposed_by | uuid        | FK → profiles.id, NOT NULL      | Admin who imposed the fine     |
+| is_paid    | boolean     | DEFAULT false                   | Whether the fine has been paid |
+| paid_at    | timestamptz | NULLABLE                        | When the fine was paid         |
+| created_at | timestamptz | DEFAULT now()                   | Record creation time           |
+| updated_at | timestamptz | DEFAULT now()                   | Last update time               |
+
+#### `student_scholarships`
+
+Percentage-based scholarships — the percentage is deducted from tuition fees.
+
+| Column              | Type        | Constraints                          | Description                          |
+| ------------------- | ----------- | ------------------------------------ | ------------------------------------ |
+| id                  | uuid        | PK                                   | Unique identifier                    |
+| student_id          | uuid        | FK → students.id, NOT NULL           | The student                          |
+| scholarship_percent | numeric     | NOT NULL, CHECK > 0 AND <= 100       | Percentage discount on tuition       |
+| reason              | text        | NULLABLE                             | Reason for scholarship               |
+| granted_by          | uuid        | FK → profiles.id, NOT NULL           | Admin who granted it                 |
+| academic_year       | text        | NOT NULL                             | Academic year (e.g., 2026-27)        |
+| is_active           | boolean     | DEFAULT true                         | Whether currently active             |
+| created_at          | timestamptz | DEFAULT now()                        | Record creation time                 |
+| updated_at          | timestamptz | DEFAULT now()                        | Last update time                     |
+| UNIQUE              |             | (student_id, academic_year)          | One scholarship per student per year |
+
+#### `salary_payments`
+
+Unified monthly salary + optional bonus records for teachers, support staff, and principal.
+
+| Column        | Type        | Constraints                                       | Description                          |
+| ------------- | ----------- | ------------------------------------------------- | ------------------------------------ |
+| id            | uuid        | PK                                                | Unique identifier                    |
+| employee_type | text        | NOT NULL, CHECK IN ('teacher','support_staff','principal') | Which staff type              |
+| employee_id   | uuid        | NOT NULL                                          | References teachers.id, support_staff.id, or principal.id |
+| month         | integer     | NOT NULL, CHECK 1-12                              | Salary month                         |
+| year          | integer     | NOT NULL                                          | Salary year                          |
+| base_salary   | numeric     | NOT NULL, CHECK >= 0                              | Base salary amount                   |
+| bonus         | numeric     | NOT NULL, DEFAULT 0, CHECK >= 0                   | Optional bonus amount                |
+| total_amount  | numeric     | NOT NULL, CHECK >= 0                              | base_salary + bonus                  |
+| paid_at       | timestamptz | NULLABLE                                          | When payment was disbursed           |
+| created_at    | timestamptz | DEFAULT now()                                     | Record creation time                 |
+| UNIQUE        |             | (employee_type, employee_id, month, year)         | One payment per employee per period  |
+
+#### `maintenance_costs`
+
+Monthly school maintenance and operational expenses.
+
+| Column      | Type        | Constraints        | Description                              |
+| ----------- | ----------- | ------------------ | ---------------------------------------- |
+| id          | uuid        | PK                 | Unique identifier                        |
+| title       | text        | NOT NULL           | Expense title                            |
+| description | text        | NULLABLE           | Detailed description                     |
+| amount      | numeric     | NOT NULL, CHECK > 0| Expense amount                           |
+| month       | integer     | NOT NULL, CHECK 1-12 | Expense month                          |
+| year        | integer     | NOT NULL           | Expense year                             |
+| category    | text        | NULLABLE           | Category (Electricity, Water, Repairs, etc.) |
+| created_at  | timestamptz | DEFAULT now()      | Record creation time                     |
+| updated_at  | timestamptz | DEFAULT now()      | Last update time                         |
+
 ### 4.3 Enums
 
 ```sql
 CREATE TYPE user_role AS ENUM ('admin', 'teacher', 'student');
 CREATE TYPE admission_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE student_status AS ENUM ('active', 'inactive', 'graduated');
+CREATE TYPE head_teacher_type AS ENUM ('permanent', 'temporary');
+CREATE TYPE attendance_status AS ENUM ('present', 'absent', 'leave');
+CREATE TYPE fee_type AS ENUM ('tuition', 'transport');
+CREATE TYPE fee_status AS ENUM ('pending', 'paid', 'partial', 'overdue');
 ```
+
+### 4.4 Helper Functions
+
+#### `is_active_head_teacher(p_teacher_id, p_section_id)`
+
+Returns `true` if the given teacher is the currently **active** head teacher of the given section. A non-expired temporary head teacher takes precedence over the permanent one.
+
+```sql
+CREATE OR REPLACE FUNCTION is_active_head_teacher(p_teacher_id uuid, p_section_id uuid)
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM section_head_teachers
+    WHERE teacher_id = p_teacher_id
+      AND section_id = p_section_id
+      AND (
+        (type = 'temporary' AND expires_at > now())
+        OR
+        (type = 'permanent' AND NOT EXISTS (
+          SELECT 1 FROM section_head_teachers t
+          WHERE t.section_id = p_section_id
+            AND t.type = 'temporary'
+            AND t.expires_at > now()
+        ))
+      )
+  );
+$$;
+```
+
+#### `get_teacher_id_for_auth()`
+
+Returns the `teachers.id` for the currently authenticated user.
+
+```sql
+CREATE OR REPLACE FUNCTION get_teacher_id_for_auth()
+RETURNS uuid
+LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = public
+AS $$
+  SELECT id FROM teachers WHERE profile_id = auth.uid();
+$$;
+```
+
+Both functions have `EXECUTE` revoked from `public` and `anon`; granted only to `authenticated`.
 
 ---
 
@@ -365,8 +632,38 @@ Supabase RLS policies will enforce:
 
 - **Admins**: Full read/write access to all tables
 - **Teachers**: Read/write to assigned sections, students, tests, exams, marks
+- **Head Teachers**: INSERT/UPDATE/SELECT on `student_attendance` for their section (via `is_active_head_teacher()`)
+- **Teachers (non-head)**: SELECT own records from `teacher_attendance`
 - **Students**: No direct database access (Phase 1)
 - **Public**: Read-only access to `site_settings` for the public website
+
+#### Attendance-Specific RLS Policies
+
+| Table                    | Policy Name                              | Operation | Role     | Rule                                                                 |
+| ------------------------ | ---------------------------------------- | --------- | -------- | -------------------------------------------------------------------- |
+| `section_head_teachers`  | `admin_all_section_heads`                | ALL       | Admin    | Full CRUD                                                            |
+| `section_head_teachers`  | `teacher_select_section_heads`           | SELECT    | Teacher  | Read-only (check own head-teacher status)                            |
+| `student_attendance`     | `admin_select_student_attendance`        | SELECT    | Admin    | Full read access                                                     |
+| `student_attendance`     | `head_teacher_select_student_attendance` | SELECT    | Teacher  | Only rows where teacher is active head of the section                |
+| `student_attendance`     | `head_teacher_insert_student_attendance` | INSERT    | Teacher  | Only for sections where teacher is active head; `marked_by` must match |
+| `student_attendance`     | `head_teacher_update_student_attendance` | UPDATE    | Teacher  | Only for sections where teacher is active head; `marked_by` must match |
+| `teacher_attendance`     | `admin_all_teacher_attendance`           | ALL       | Admin    | Full CRUD                                                            |
+| `teacher_attendance`     | `teacher_select_own_attendance`          | SELECT    | Teacher  | Own records only (`teacher_id` matches authenticated teacher)        |
+
+#### Financial RLS Policies
+
+| Table                  | Policy Name                        | Operation | Role    | Rule                                                   |
+| ---------------------- | ---------------------------------- | --------- | ------- | ------------------------------------------------------ |
+| `support_staff`        | `admin_all_support_staff`          | ALL       | Admin   | Full CRUD                                              |
+| `principal`            | `admin_all_principal`              | ALL       | Admin   | Full CRUD                                              |
+| `fee_structures`       | `admin_all_fee_structures`         | ALL       | Admin   | Full CRUD                                              |
+| `student_fees`         | `admin_all_student_fees`           | ALL       | Admin   | Full CRUD                                              |
+| `fee_payments`         | `admin_all_fee_payments`           | ALL       | Admin   | Full CRUD                                              |
+| `student_fines`        | `admin_all_student_fines`          | ALL       | Admin   | Full CRUD                                              |
+| `student_scholarships` | `admin_all_student_scholarships`   | ALL       | Admin   | Full CRUD                                              |
+| `salary_payments`      | `admin_all_salary_payments`        | ALL       | Admin   | Full CRUD                                              |
+| `salary_payments`      | `teacher_select_own_salary`        | SELECT    | Teacher | Own records only (employee_type='teacher', employee_id matches) |
+| `maintenance_costs`    | `admin_all_maintenance_costs`      | ALL       | Admin   | Full CRUD                                              |
 
 ### 5.4 Route Protection
 
@@ -423,6 +720,36 @@ app/
 │   │   │   └── page.tsx         # Review admissions
 │   │   ├── website/
 │   │   │   └── page.tsx         # Website customization
+│   │   ├── head-teachers/
+│   │   │   └── page.tsx         # Appoint/manage head teachers
+│   │   ├── attendance/
+│   │   │   ├── page.tsx         # Teacher attendance overview
+│   │   │   ├── teachers/
+│   │   │   │   └── page.tsx     # Mark/view daily teacher attendance
+│   │   │   └── reports/
+│   │   │       └── page.tsx     # Attendance reports & summaries
+│   │   ├── fees/
+│   │   │   ├── page.tsx         # Fee structures overview
+│   │   │   ├── structures/
+│   │   │   │   └── page.tsx     # Manage fee structures per class
+│   │   │   ├── collection/
+│   │   │   │   └── page.tsx     # Collect fee payments
+│   │   │   └── reports/
+│   │   │       └── page.tsx     # Fee collection reports
+│   │   ├── fines/
+│   │   │   └── page.tsx         # Manage student fines
+│   │   ├── scholarships/
+│   │   │   └── page.tsx         # Manage student scholarships
+│   │   ├── salaries/
+│   │   │   ├── page.tsx         # Salary overview (all staff)
+│   │   │   └── payments/
+│   │   │       └── page.tsx     # Process monthly salary payments
+│   │   ├── staff/
+│   │   │   ├── page.tsx         # Support staff list
+│   │   │   └── principal/
+│   │   │       └── page.tsx     # Principal profile
+│   │   ├── maintenance/
+│   │   │   └── page.tsx         # Monthly maintenance costs
 │   │   ├── ai-settings/
 │   │   │   └── page.tsx         # AI features toggle
 │   │   └── profile/
@@ -446,6 +773,10 @@ app/
 │       │   │   └── page.tsx     # Create exam
 │       │   └── [id]/
 │       │       └── page.tsx     # Enter/edit exam marks
+│       ├── attendance/
+│       │   ├── page.tsx         # Mark daily student attendance (head teachers only)
+│       │   └── history/
+│       │       └── page.tsx     # View attendance history for section
 │       └── profile/
 │           └── page.tsx         # Teacher profile
 │
@@ -487,7 +818,15 @@ lib/
 │   ├── tests.ts
 │   ├── exams.ts
 │   ├── admissions.ts
-│   └── site-settings.ts
+│   ├── site-settings.ts
+│   ├── attendance.ts            # Student & teacher attendance queries
+│   ├── head-teachers.ts         # Head teacher assignment queries
+│   ├── fees.ts                  # Fee structures, student fees, payments
+│   ├── fines.ts                 # Student fines queries
+│   ├── scholarships.ts          # Student scholarship queries
+│   ├── salaries.ts              # Salary payment queries (all staff types)
+│   ├── staff.ts                 # Support staff & principal queries
+│   └── maintenance.ts           # Maintenance cost queries
 ├── actions/                     # Server Actions
 │   ├── auth.ts
 │   ├── users.ts
@@ -496,13 +835,29 @@ lib/
 │   ├── teachers.ts
 │   ├── tests.ts
 │   ├── exams.ts
-│   └── admissions.ts
+│   ├── admissions.ts
+│   ├── attendance.ts            # Mark/update student & teacher attendance
+│   ├── head-teachers.ts         # Appoint/remove/replace head teachers
+│   ├── fees.ts                  # Manage fee structures, collect payments
+│   ├── fines.ts                 # Impose/pay student fines
+│   ├── scholarships.ts          # Grant/revoke scholarships
+│   ├── salaries.ts              # Process salary + bonus payments
+│   ├── staff.ts                 # CRUD support staff & principal
+│   └── maintenance.ts           # Record maintenance costs
 ├── validations/                 # Zod schemas
 │   ├── auth.ts
 │   ├── student.ts
 │   ├── teacher.ts
 │   ├── class.ts
-│   └── admission.ts
+│   ├── admission.ts
+│   ├── attendance.ts            # Attendance form schemas
+│   ├── head-teacher.ts          # Head teacher assignment schemas
+│   ├── fee.ts                   # Fee structure & payment schemas
+│   ├── fine.ts                  # Student fine schemas
+│   ├── scholarship.ts           # Scholarship schemas
+│   ├── salary.ts                # Salary payment schemas
+│   ├── staff.ts                 # Support staff & principal schemas
+│   └── maintenance.ts           # Maintenance cost schemas
 ├── hooks/                       # Custom React hooks
 │   ├── use-auth.ts
 │   └── use-theme.ts
@@ -523,11 +878,28 @@ components/
 │   ├── otp-form.tsx
 │   ├── student-form.tsx
 │   ├── teacher-form.tsx
-│   └── admission-form.tsx
+│   ├── admission-form.tsx
+│   ├── mark-attendance-form.tsx  # Mark student/teacher attendance
+│   ├── head-teacher-form.tsx     # Appoint head teacher
+│   ├── fee-structure-form.tsx    # Define fee structures
+│   ├── fee-payment-form.tsx      # Collect fee payment
+│   ├── fine-form.tsx             # Impose student fine
+│   ├── scholarship-form.tsx      # Grant scholarship
+│   ├── salary-payment-form.tsx   # Process salary/bonus
+│   ├── staff-form.tsx            # Add/edit support staff or principal
+│   └── maintenance-form.tsx      # Record maintenance cost
 ├── tables/
 │   ├── students-table.tsx
 │   ├── teachers-table.tsx
-│   └── marks-table.tsx
+│   ├── marks-table.tsx
+│   ├── student-attendance-table.tsx  # Student attendance records
+│   ├── teacher-attendance-table.tsx  # Teacher attendance records
+│   ├── fees-table.tsx                # Student fee records
+│   ├── fines-table.tsx               # Student fines
+│   ├── scholarships-table.tsx        # Scholarships
+│   ├── salary-table.tsx              # Salary payments
+│   ├── staff-table.tsx               # Support staff list
+│   └── maintenance-table.tsx         # Maintenance costs
 ├── dashboard/
 │   ├── stats-card.tsx
 │   ├── recent-activity.tsx
@@ -606,6 +978,111 @@ Display result to user
 - **Content Recommendations**: AI-suggested text for website sections
 - **Global Toggle**: Admin can enable/disable all AI features with one switch
 - **Individual Toggles**: Granular control per AI feature
+
+### 7.6 Attendance System
+
+#### Head Teacher Assignments
+
+Each section has **one permanent head teacher** appointed by the admin. A teacher can only be head teacher of **one section at a time**. The admin can also appoint a **temporary head teacher** (who must not currently be a head teacher of any section) for a fixed duration: 1 day, 3 days, 7 days, 15 days, or 30 days.
+
+The "active" head teacher is determined by precedence:
+1. If a **temporary** head teacher exists and `expires_at > now()`, they are active
+2. Otherwise, the **permanent** head teacher is active
+3. Expired temporary records remain in the table but are ignored at query time
+
+```
+Admin appoints Head Teacher
+    ↓
+section_head_teachers record created (type = 'permanent')
+    ↓
+[Optional] Admin appoints Temporary Head Teacher
+    ↓
+section_head_teachers record created (type = 'temporary', expires_at set)
+    ↓
+Active head = temporary (while not expired) > permanent
+```
+
+#### Student Attendance
+
+- Marked by the **active head teacher** of the section
+- One record per student per day
+- Statuses: present, absent, leave
+- Head teacher sees only their section's students
+- Admin has read-only access to all student attendance
+
+#### Teacher Attendance
+
+- Marked by the **admin**
+- One record per teacher per day
+- Statuses: present, absent, leave
+- Teachers can view their own attendance records (read-only)
+
+### 7.7 Financial Management
+
+#### Fee System
+
+Two fee types per class: **tuition** (required) and **transport** (optional).
+
+```
+Admin defines Fee Structures (per class, per type, per academic year)
+    ↓
+System generates Student Fees monthly (gross amount from structure)
+    ↓
+Scholarship discount applied to tuition fees (if student has active scholarship)
+    ↓
+Fines added to net amount (if any unpaid fines)
+    ↓
+net_amount = gross_amount - scholarship_discount + fine_amount
+    ↓
+Admin collects Fee Payments → status updated (pending → partial → paid)
+```
+
+- Fee structures are defined per class per academic year
+- Transport fees are optional — only assigned to students who use transport
+- Scholarships are percentage-based and deducted from tuition fees only
+- Multiple partial payments are supported per fee record
+- Fee status transitions: pending → partial (some paid) → paid (fully paid); overdue (past due date)
+
+#### Fines
+
+- Admin imposes fines on individual students with a reason
+- Fines are tracked separately and can be linked to fee records
+- Each fine has an `is_paid` flag and `paid_at` timestamp
+
+#### Scholarships
+
+- Admin grants scholarships as a percentage (1-100%) per student per academic year
+- The percentage is deducted from tuition fees when generating monthly fee records
+- One active scholarship per student per academic year
+- Can be deactivated without deleting (preserves history)
+
+#### Salary Management
+
+All staff types (teachers, support staff, principal) have base salaries stored on their respective tables. Monthly salary payments are recorded in a unified `salary_payments` table.
+
+- **Base salary**: Stored on `teachers.salary`, `support_staff.salary`, `principal.salary`
+- **Monthly payments**: Recorded in `salary_payments` with optional `bonus`
+- **total_amount** = base_salary + bonus
+- Teachers can view their own salary history (read-only)
+
+#### Support Staff
+
+- Non-login records managed by admin
+- Fields: name, phone, designation (e.g., Peon, Guard, Cleaner), salary
+- Included in salary payment system
+
+#### Principal
+
+- Non-login record managed by admin (typically one row)
+- Fields: name, phone, email, qualification, salary, avatar
+- Included in salary payment system
+
+#### Maintenance Costs
+
+- Admin records monthly school expenses
+- Each entry: title, description, amount, month/year, category
+- Categories: Electricity, Water, Repairs, Supplies, etc.
+- Used for financial reporting and budgeting
 
 ---
 
@@ -724,7 +1201,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - **Connection Pooling** via Supabase's built-in PgBouncer
 - **Caching** with Next.js 16 Cache Components where appropriate
 
-### 11.1 Database Indexes (37 custom indexes)
+### 11.1 Database Indexes (68 custom indexes)
 
 All foreign keys, frequently filtered columns, and common query patterns are indexed.
 
@@ -755,6 +1232,21 @@ All foreign keys, frequently filtered columns, and common query patterns are ind
 | `idx_exam_marks_subject_id`       | exam_marks         | subject_id             |
 | `idx_admissions_class_id`         | admissions         | class_id               |
 | `idx_admissions_reviewed_by`      | admissions         | reviewed_by            |
+| `idx_section_heads_teacher_id`    | section_head_teachers | teacher_id          |
+| `idx_section_heads_section_id`    | section_head_teachers | section_id          |
+| `idx_student_attendance_section_id`   | student_attendance | section_id         |
+| `idx_student_attendance_marked_by`    | student_attendance | marked_by          |
+| `idx_student_attendance_student_id`   | student_attendance | student_id         |
+| `idx_teacher_attendance_marked_by`    | teacher_attendance | marked_by          |
+| `idx_teacher_attendance_teacher_id`   | teacher_attendance | teacher_id         |
+| `idx_fee_structures_class_id`         | fee_structures     | class_id           |
+| `idx_student_fees_student_id`         | student_fees       | student_id         |
+| `idx_student_fees_fee_structure_id`   | student_fees       | fee_structure_id   |
+| `idx_fee_payments_student_fee_id`     | fee_payments       | student_fee_id     |
+| `idx_fee_payments_received_by`        | fee_payments       | received_by        |
+| `idx_student_fines_student_id`        | student_fines      | student_id         |
+| `idx_student_fines_imposed_by`        | student_fines      | imposed_by         |
+| `idx_student_scholarships_student_id` | student_scholarships | student_id       |
 
 #### Filter / Sort Indexes
 
@@ -774,8 +1266,33 @@ All foreign keys, frequently filtered columns, and common query patterns are ind
 | `idx_otp_codes_email`             | otp_codes  | email                 | Lookup OTPs by email                         |
 | `idx_otp_codes_expires_at`        | otp_codes  | expires_at            | Cleanup expired OTPs                         |
 | `idx_otp_codes_active`            | otp_codes  | email, expires_at     | Partial index (WHERE used = false) for verification |
+| `idx_section_heads_expires_at`    | section_head_teachers | expires_at   | Expiry lookups for temporary head teachers           |
+| `idx_student_attendance_date`     | student_attendance    | date         | Filter attendance by date                            |
+| `idx_student_attendance_section_date` | student_attendance | section_id, date | Bulk lookup: all students in a section on a day  |
+| `idx_teacher_attendance_date`     | teacher_attendance    | date         | Filter teacher attendance by date                    |
+| `idx_fee_structures_academic_year`| fee_structures        | academic_year | Filter fee structures by year                       |
+| `idx_fee_structures_fee_type`     | fee_structures        | fee_type     | Filter by tuition/transport                          |
+| `idx_student_fees_status`         | student_fees          | status       | Filter pending/paid/partial/overdue fees             |
+| `idx_student_fees_due_date`       | student_fees          | due_date     | Find overdue fees                                    |
+| `idx_student_fees_month_year`     | student_fees          | year, month  | Lookup fees by period                                |
+| `idx_fee_payments_payment_date`   | fee_payments          | payment_date | Filter payments by date                              |
+| `idx_student_fines_is_paid`       | student_fines         | is_paid      | Filter paid/unpaid fines                             |
+| `idx_student_scholarships_academic_year` | student_scholarships | academic_year | Filter by academic year                        |
+| `idx_student_scholarships_is_active`     | student_scholarships | is_active    | Filter active scholarships                     |
+| `idx_salary_payments_employee`    | salary_payments       | employee_type, employee_id | Lookup salary by employee              |
+| `idx_salary_payments_month_year`  | salary_payments       | year, month  | Lookup salaries by period                            |
+| `idx_salary_payments_paid_at`     | salary_payments       | paid_at      | Filter paid/unpaid salaries                          |
+| `idx_maintenance_costs_month_year`| maintenance_costs     | year, month  | Lookup costs by period                               |
+| `idx_maintenance_costs_category`  | maintenance_costs     | category     | Filter by expense category                           |
 
-> **Note**: UNIQUE constraints on `profiles.email`, `classes.name`, `subjects.code`, `teachers.employee_id`, `teachers.profile_id`, and all pivot table composite keys also create implicit indexes (not counted above).
+#### Partial Unique Indexes (Attendance)
+
+| Index                                 | Table                 | Column(s)  | Condition              | Purpose                              |
+| ------------------------------------- | --------------------- | ---------- | ---------------------- | ------------------------------------ |
+| `idx_unique_section_permanent_head`   | section_head_teachers | section_id | WHERE type = 'permanent' | One permanent head per section     |
+| `idx_unique_section_temporary_head`   | section_head_teachers | section_id | WHERE type = 'temporary' | One temporary head per section     |
+
+> **Note**: UNIQUE constraints on `profiles.email`, `classes.name`, `subjects.code`, `teachers.employee_id`, `teachers.profile_id`, all pivot table composite keys, `(student_id, date)` on `student_attendance`, and `(teacher_id, date)` on `teacher_attendance` also create implicit indexes (not counted above).
 
 ---
 
@@ -783,8 +1300,6 @@ All foreign keys, frequently filtered columns, and common query patterns are ind
 
 - Student login portal
 - Parent login portal
-- Attendance tracking system
-- Fee management
 - Timetable management
 - Report card generation & PDF export
 - SMS notifications

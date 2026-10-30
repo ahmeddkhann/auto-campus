@@ -76,16 +76,20 @@ components/
 
 Execute migrations in order:
 
-1. **Enums**: `user_role`, `admission_status`, `student_status`
+1. **Enums**: `user_role`, `admission_status`, `student_status`, `head_teacher_type`, `attendance_status`, `fee_type`, `fee_status`
 2. **Core tables**: `profiles`, `classes`, `sections`, `subjects`
-3. **User tables**: `students`, `teachers`
+3. **User tables**: `students`, `teachers` (with `salary` column)
 4. **Pivot tables**: `teacher_sections`, `teacher_subjects`, `student_subjects`
 5. **Assessment tables**: `tests`, `test_marks`, `exams`, `exam_marks`
 6. **Application tables**: `admissions`, `otp_codes`
 7. **Settings tables**: `site_settings`, `ai_settings`
-8. **Indexes**: On all foreign keys and commonly filtered columns
-9. **RLS Policies**: Enable RLS on all tables with role-based policies
-10. **Seed data**: Default classes (Nursery, Prep, 1-12), default site_settings, default ai_settings
+8. **Attendance tables**: `section_head_teachers`, `student_attendance`, `teacher_attendance`
+9. **Staff tables**: `support_staff`, `principal`
+10. **Financial tables**: `fee_structures`, `student_fees`, `fee_payments`, `student_fines`, `student_scholarships`, `salary_payments`, `maintenance_costs`
+11. **Helper functions**: `is_active_head_teacher()`, `get_teacher_id_for_auth()`
+12. **Indexes**: On all foreign keys and commonly filtered columns (68 custom indexes + partial unique indexes)
+13. **RLS Policies**: Enable RLS on all tables with role-based policies
+14. **Seed data**: Default classes (Nursery, Prep, 1-12), default site_settings, default ai_settings
 
 ### 1.5 Deliverables
 
@@ -93,6 +97,11 @@ Execute migrations in order:
 - [x] Folder structure created
 - [x] Supabase clients configured
 - [x] All database tables created with RLS
+- [x] Attendance tables created (section_head_teachers, student_attendance, teacher_attendance)
+- [x] Attendance helper functions created (is_active_head_teacher, get_teacher_id_for_auth)
+- [x] Staff tables created (support_staff, principal)
+- [x] Financial tables created (fee_structures, student_fees, fee_payments, student_fines, student_scholarships, salary_payments, maintenance_costs)
+- [x] Teachers table updated with salary column
 - [x] Seed data inserted (14 default classes, default settings)
 - [x] TypeScript types generated from Supabase schema
 
@@ -215,13 +224,84 @@ Execute migrations in order:
 - **Assign/reassign** teachers to subjects within sections
 - **View** teacher's full assignment matrix (which classes, sections, subjects)
 
-### 3.8 Admin Profile
+### 3.8 Head Teacher Management
+
+- **View** all sections with their current head teacher (permanent and temporary)
+- **Appoint permanent head teacher**: Select a teacher (who is not already a head teacher) for a section
+- **Remove/replace head teacher**: Remove the current permanent head teacher, optionally appoint a new one
+- **Appoint temporary head teacher**: Select a non-head teacher, choose duration (1d, 3d, 7d, 15d, 30d), system auto-calculates `expires_at`
+- **Validation**: Teacher can only be head teacher of one section at a time; temporary head teacher must not be a head teacher elsewhere
+- **View expired temporary assignments**: History of past temporary appointments
+
+### 3.9 Teacher Attendance
+
+- **Mark daily attendance**: Admin marks attendance for all teachers (present/absent/leave)
+- **Bulk marking**: All teachers listed with status selectors, save all at once
+- **View attendance history**: Filter by teacher, date range
+- **Attendance reports**: Summary stats (total present/absent/leave days per teacher)
+
+### 3.10 Fee Management
+
+- **Fee Structures**: Define tuition and transport fee amounts per class per academic year
+- **Student Fee Generation**: Generate monthly fee records for students
+  - Tuition: required for all students in the class
+  - Transport: optional, assigned to students who use transport
+- **Scholarship Application**: Auto-calculate scholarship discount on tuition fees using the student's active scholarship percentage
+- **Fee Collection**: Record payments against student fees
+  - Support partial payments (status transitions: pending → partial → paid)
+  - Track who received each payment
+- **Fee Reports**: Summary of collected vs. outstanding fees, filter by class/section/month
+
+### 3.11 Student Fines
+
+- **Impose Fine**: Admin selects a student, enters amount and reason
+- **View Fines**: List all fines, filter by student, paid/unpaid status
+- **Mark Paid**: Update `is_paid` and `paid_at` when fine is settled
+- Fines can optionally be linked to student fee records (added to `fine_amount`)
+
+### 3.12 Scholarship Management
+
+- **Grant Scholarship**: Admin selects a student, enters percentage (1-100%) and reason, for a specific academic year
+- **View Scholarships**: List all scholarships, filter by active/inactive, academic year
+- **Deactivate**: Revoke a scholarship without deleting (preserves history)
+- **Validation**: One active scholarship per student per academic year
+- Scholarship discount is applied when generating tuition fee records
+
+### 3.13 Salary Management
+
+- **View Salaries**: See base salaries for all teachers, support staff, and principal
+- **Process Monthly Payments**: Generate salary payment records for a given month/year
+  - Pre-populate base_salary from the employee's record
+  - Optional bonus field per employee
+  - total_amount = base_salary + bonus
+- **Payment History**: View past salary payments, filter by employee type, month/year
+- **Update Base Salary**: Edit salary on teachers, support_staff, or principal records
+
+### 3.14 Support Staff Management
+
+- **Add/Edit/Remove** support staff members (name, phone, designation, salary)
+- **Staff List**: Sortable, searchable table of all support staff
+- Cannot login — admin-only data management
+
+### 3.15 Principal Management
+
+- **Add/Edit** principal record (name, phone, email, qualification, salary, avatar)
+- Typically one row — principal profile page
+
+### 3.16 Maintenance Costs
+
+- **Record Expense**: Title, description, amount, month/year, category
+- **Categories**: Electricity, Water, Repairs, Supplies, Miscellaneous, etc.
+- **View History**: Filter by month/year, category
+- **Monthly Summary**: Total expenses per month for budgeting
+
+### 3.17 Admin Profile
 
 - View/edit own profile
 - Upload/change profile picture
 - Change password
 
-### 3.9 Deliverables
+### 3.18 Deliverables
 
 - [x] Dashboard layout with sidebar + header
 - [x] Admin dashboard with stats
@@ -230,6 +310,14 @@ Execute migrations in order:
 - [x] Admin/teacher user management
 - [x] Student management with transfer capability
 - [x] Teacher assignment management
+- [x] Head teacher management (appoint permanent + temporary)
+- [x] Teacher attendance marking and history
+- [x] Fee structure management and fee collection
+- [x] Student fines management
+- [x] Scholarship management
+- [x] Salary management (teachers, support staff, principal)
+- [x] Support staff and principal management
+- [x] Maintenance costs tracking
 - [x] Profile management with avatar upload
 
 ---
@@ -272,17 +360,30 @@ Execute migrations in order:
   - Validate: obtained ≤ total
 - **View/Edit Exams**: List with summary stats
 
-### 4.5 Teacher Profile
+### 4.5 Student Attendance (Head Teachers Only)
+
+- **Mark daily attendance**: Head teacher marks attendance for all students in their section
+  - Auto-populate student list for the section
+  - Select status per student: present, absent, leave
+  - Optional remarks per student
+  - Save all at once (batch insert/upsert)
+- **View attendance history**: Filter by date range, student
+- **Access control**: Only the active head teacher (permanent or temporary while not expired) can mark attendance
+- **Own attendance**: All teachers can view their own attendance records (marked by admin)
+
+### 4.6 Teacher Profile
 
 - View/edit own profile
 - Upload/change profile picture
 
-### 4.6 Deliverables
+### 4.7 Deliverables
 
 - [x] Teacher dashboard
 - [x] View assigned classes/sections/students
 - [x] Create tests and enter marks
 - [x] Create exams and enter exam marks
+- [x] Student attendance marking (head teachers only)
+- [x] View own attendance history
 - [x] Profile management
 
 ---

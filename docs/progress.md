@@ -1,6 +1,6 @@
 # Auto Campus — Progress Tracker
 
-> Last updated: Oct 28, 2026
+> Last updated: Oct 30, 2026
 
 ---
 
@@ -21,6 +21,36 @@
 ---
 
 ## Changelog
+
+### Oct 30, 2026
+- ✅ Updated `attendance_status` enum: changed from `(present, absent, late, excused)` to `(present, absent, leave)`
+- ✅ Designed financial system: fees, fines, scholarships, salaries, support staff, principal, maintenance
+- ✅ Created `migrations/financial_system.sql` — 9 logical migrations:
+  - `create_financial_enums` — `fee_type`, `fee_status`
+  - `alter_teachers_add_salary` — adds `salary` column to existing `teachers` table
+  - `create_staff_tables` — `support_staff`, `principal`
+  - `create_fee_tables` — `fee_structures`, `student_fees`, `fee_payments` with 8 indexes
+  - `create_fines_and_scholarships` — `student_fines`, `student_scholarships` with 6 indexes
+  - `create_salary_payments` — unified salary + bonus table with 3 indexes
+  - `create_maintenance_costs` — monthly expenses with 2 indexes
+  - `setup_financial_rls` — 10 RLS policies across 9 tables
+  - `create_financial_triggers` — `updated_at` triggers for 7 tables
+- ✅ Updated all docs: `technical_report.md` (new tables, enums, ER diagram, indexes, RLS, routes, components, features 7.7), `plan.md` (Phase 1 + Phase 3 financial sections), `progress.md`
+- ⏳ Pending: Apply `migrations/attendance_system.sql` and `migrations/financial_system.sql`
+
+### Oct 29, 2026
+- ✅ Designed attendance system: head teacher assignments + student/teacher attendance
+- ✅ Created `migrations/attendance_system.sql` — 6 logical migrations:
+  - `create_attendance_enums` — `head_teacher_type`, `attendance_status`
+  - `create_section_head_teachers` — table with partial unique indexes + CHECK constraint
+  - `create_attendance_tables` — `student_attendance`, `teacher_attendance` with 11 indexes
+  - `create_attendance_helper_function` — `is_active_head_teacher()`, `get_teacher_id_for_auth()`
+  - `setup_attendance_rls` — 8 RLS policies across 3 new tables
+  - `create_attendance_triggers` — `updated_at` auto-update triggers for 3 tables
+- ✅ Updated `technical_report.md` — new tables, enums, helper functions, RLS policies, routes, components, indexes, feature section 7.6
+- ✅ Updated `plan.md` — attendance tasks added to Phase 1, Phase 3 (admin), Phase 4 (teacher)
+- ✅ Updated `progress.md` — attendance tasks added across phases, decision log updated
+- ⏳ Pending: Apply `migrations/attendance_system.sql` to Supabase project
 
 ### Oct 28, 2026
 - ✅ Created Next.js 16.4.3 project with Tailwind CSS 4 and TypeScript
@@ -71,6 +101,23 @@
 - [x] Write and apply database migration (all tables + enums)
 - [x] Set up Row-Level Security (RLS) policies
 - [x] Seed default data (classes, site_settings, ai_settings)
+- [ ] Apply attendance system migration (`migrations/attendance_system.sql`):
+  - [ ] Create `head_teacher_type` and `attendance_status` enums
+  - [ ] Create `section_head_teachers` table with partial unique indexes
+  - [ ] Create `student_attendance` and `teacher_attendance` tables with indexes
+  - [ ] Create `is_active_head_teacher()` and `get_teacher_id_for_auth()` helper functions
+  - [ ] Set up attendance RLS policies (8 policies across 3 tables)
+  - [ ] Create `updated_at` triggers for attendance tables
+- [ ] Apply financial system migration (`migrations/financial_system.sql`):
+  - [ ] Create `fee_type` and `fee_status` enums
+  - [ ] ALTER `teachers` to add `salary` column
+  - [ ] Create `support_staff` and `principal` tables
+  - [ ] Create `fee_structures`, `student_fees`, `fee_payments` tables
+  - [ ] Create `student_fines` and `student_scholarships` tables
+  - [ ] Create `salary_payments` table
+  - [ ] Create `maintenance_costs` table
+  - [ ] Set up financial RLS policies (10 policies across 9 tables)
+  - [ ] Create `updated_at` triggers for financial tables
 - [ ] Generate TypeScript types from Supabase schema
 
 ---
@@ -102,6 +149,29 @@
 - [ ] Student management (add/edit/transfer sections)
 - [ ] Student detail page (profile, subjects, marks history)
 - [ ] Teacher assignment matrix
+- [ ] Head teacher management page:
+  - [ ] View all sections with current head teachers
+  - [ ] Appoint/remove permanent head teachers
+  - [ ] Appoint temporary head teachers (1d/3d/7d/15d/30d)
+  - [ ] Validation (one section per teacher, non-head for temp)
+- [ ] Teacher attendance page:
+  - [ ] Mark daily teacher attendance (bulk)
+  - [ ] View teacher attendance history
+  - [ ] Attendance reports/summaries
+- [ ] Fee management:
+  - [ ] Fee structures CRUD (per class, tuition/transport, per year)
+  - [ ] Student fee record generation
+  - [ ] Fee collection with partial payment support
+  - [ ] Fee reports (collected vs outstanding)
+- [ ] Student fines management (impose, view, mark paid)
+- [ ] Scholarship management (grant, view, deactivate)
+- [ ] Salary management:
+  - [ ] View/edit base salaries for all staff types
+  - [ ] Process monthly salary payments with optional bonuses
+  - [ ] Salary payment history
+- [ ] Support staff management (CRUD, non-login)
+- [ ] Principal management (profile, salary)
+- [ ] Maintenance costs tracking (record, view history, monthly summary)
 - [ ] Profile page with avatar upload
 
 ---
@@ -116,6 +186,11 @@
 - [ ] Create exam (select section, enter details)
 - [ ] Enter/edit exam marks (per subject per student)
 - [ ] View test/exam history and summaries
+- [ ] Student attendance (head teachers only):
+  - [ ] Mark daily attendance for section students (bulk)
+  - [ ] View section attendance history
+  - [ ] Access restricted to active head teachers
+- [ ] View own attendance history (all teachers)
 - [ ] Teacher profile page
 
 ---
@@ -177,3 +252,16 @@
 | Oct 28, 2026 | `otp_codes` has RLS enabled with no policies           | Intentional — managed exclusively via service-role key       |
 | Oct 28, 2026 | SECURITY DEFINER helpers callable by `authenticated`   | Required for RLS policy evaluation; anon access revoked      |
 | Oct 28, 2026 | Admin/teacher RLS policies scoped `TO authenticated`   | Prevents anon from triggering SECURITY DEFINER function calls |
+| Oct 29, 2026 | Separate `section_head_teachers` table (not a flag on `teacher_sections`) | Head teacher role has distinct semantics: appointment, expiry, permanent/temporary types; a head teacher may not teach in that section |
+| Oct 29, 2026 | Temporary head teacher precedence over permanent        | When a temporary head is active (not expired), they are the "active" head; permanent resumes automatically after expiry |
+| Oct 29, 2026 | Expired temporary records kept (not auto-deleted)       | Provides audit history; filtered out at query time via `expires_at > now()` |
+| Oct 29, 2026 | `is_active_head_teacher()` as SECURITY DEFINER          | Required for RLS policy evaluation; determines which head teacher can mark attendance |
+| Oct 29, 2026 | Student attendance marked by head teacher, not any teacher | Ensures accountability — one designated teacher per section owns attendance |
+| Oct 29, 2026 | Teacher attendance marked by admin only                 | Admin has full visibility and control over teacher attendance records |
+| Oct 30, 2026 | Student attendance statuses: present, absent, leave only | Simplified from 4 statuses; `leave` covers both excused and pre-approved absence |
+| Oct 30, 2026 | Two fee types: tuition (required) + transport (optional) | Transport is opt-in per student; tuition applies to all students in a class |
+| Oct 30, 2026 | Scholarships as percentage on tuition fees only          | Percentage-based discount (1-100%) applied when generating monthly fee records |
+| Oct 30, 2026 | Unified `salary_payments` table for all staff types      | Single table with `employee_type` discriminator avoids three separate payment tables |
+| Oct 30, 2026 | Support staff and principal cannot login                  | Data-only records managed by admin; no auth.users or profiles rows needed |
+| Oct 30, 2026 | `salary` column added directly to `teachers` table       | Base salary stored on entity; `salary_payments` records actual monthly disbursements with optional bonus |
+| Oct 30, 2026 | Maintenance costs tracked per month with categories      | Provides financial overview; categories allow filtering (Electricity, Water, Repairs, etc.) |
