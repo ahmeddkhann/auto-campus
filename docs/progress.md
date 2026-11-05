@@ -123,17 +123,20 @@
 ---
 
 ## Phase 2: Authentication
-**Status**: 🔲 Not Started
+**Status**: 🟡 In Progress
 
-- [ ] Implement session management (JWT encrypt/decrypt via Jose)
-- [ ] Implement OTP generation, hashing, storage
-- [ ] Implement Nodemailer Gmail transport
-- [ ] Build login page (email + password)
-- [ ] Build OTP verification page
-- [ ] Implement logout functionality
-- [ ] Set up `proxy.ts` for route protection
-- [ ] Create Data Access Layer (`verifySession`, `getUser`)
-- [ ] Test full login → OTP → dashboard flow
+- [x] Implement session management (JWT encrypt/decrypt via Jose) — lib/auth/session.ts created
+- [x] Implement OTP generation, hashing, storage — lib/auth/otp.ts created
+- [x] Implement Nodemailer Gmail transport — lib/auth/mail.ts created
+- [x] Build login page (email + password) — app/(auth)/login/page.tsx created
+- [x] Build OTP verification page — app/(auth)/verify-otp/page.tsx created
+- [x] Build admin signup page — app/(auth)/signup/page.tsx created
+- [x] Build landing page with responsive navbar — app/page.tsx + components/ui/navbar.tsx created
+- [ ] Implement logout functionality — pending
+- [x] Set up `proxy.ts` for route protection — proxy.ts created
+- [x] Create Data Access Layer (`verifySession`, `getUser`) — lib/dal/auth.ts created
+- [x] Add admin user migration — supabase_migration/add_admin_user.sql created
+- [ ] Test full login → OTP → dashboard flow — pending
 
 ---
 
