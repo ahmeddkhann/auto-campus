@@ -2,6 +2,8 @@ import "server-only";
 
 import nodemailer from "nodemailer";
 
+import { escapeHtml } from "@/lib/utils/escape-html";
+
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 
 function getSmtpConfig() {
@@ -41,6 +43,10 @@ function getTransporter() {
   }
 
   return transporter;
+}
+
+function appUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
 export const otpEmailTemplate = (
@@ -103,5 +109,99 @@ export async function sendAdminNotification({
     to: notifyEmail,
     subject,
     html,
+  });
+}
+
+export async function sendAdminWelcomeEmail({
+  to,
+  fullName,
+  password,
+  schoolName,
+}: {
+  to: string;
+  fullName: string;
+  password: string;
+  schoolName: string;
+}) {
+  const { from } = getSmtpConfig();
+  const login = `${appUrl()}/login`;
+
+  await getTransporter().sendMail({
+    from,
+    to,
+    subject: `Your ${schoolName} admin account`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a56db;">Welcome to ${escapeHtml(schoolName)}</h2>
+        <p>Hi ${escapeHtml(fullName)},</p>
+        <p>An administrator account has been created for you.</p>
+        <ul>
+          <li><strong>Email:</strong> ${escapeHtml(to)}</li>
+          <li><strong>Password:</strong> ${escapeHtml(password)}</li>
+        </ul>
+        <p>Sign in at <a href="${login}">${login}</a>. After entering your password you will receive a one-time verification code by email.</p>
+        <p>Please change your password after your first login.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendTeacherWelcomeEmail({
+  to,
+  fullName,
+  password,
+  schoolName,
+}: {
+  to: string;
+  fullName: string;
+  password: string;
+  schoolName: string;
+}) {
+  const { from } = getSmtpConfig();
+  const login = `${appUrl()}/login`;
+
+  await getTransporter().sendMail({
+    from,
+    to,
+    subject: `Your ${schoolName} teacher account`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a56db;">Welcome to ${escapeHtml(schoolName)}</h2>
+        <p>Hi ${escapeHtml(fullName)},</p>
+        <p>A teacher account has been created for you.</p>
+        <ul>
+          <li><strong>Email:</strong> ${escapeHtml(to)}</li>
+          <li><strong>Password:</strong> ${escapeHtml(password)}</li>
+        </ul>
+        <p>Sign in at <a href="${login}">${login}</a> with the credentials above.</p>
+        <p>Please change your password after your first login.</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendStudentEnrollmentEmail({
+  to,
+  fullName,
+  schoolName,
+}: {
+  to: string;
+  fullName: string;
+  schoolName: string;
+}) {
+  const { from } = getSmtpConfig();
+
+  await getTransporter().sendMail({
+    from,
+    to,
+    subject: `Enrolled at ${schoolName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a56db;">${escapeHtml(schoolName)}</h2>
+        <p>Hi ${escapeHtml(fullName)},</p>
+        <p>You have been added as a student in the school <strong>${escapeHtml(schoolName)}</strong>.</p>
+        <p>This message confirms your enrollment. No login credentials are included because student portal access is not enabled yet.</p>
+      </div>
+    `,
   });
 }

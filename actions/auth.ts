@@ -94,19 +94,26 @@ export async function login(
   }
 
   const emailLower = data.user.email?.toLowerCase() ?? email.toLowerCase();
+  const sessionUser = {
+    sub: data.user.id,
+    email: emailLower,
+    role: profile.role,
+  };
 
-  // Step 3: Generate and deliver a one-time password.
+  // Teachers skip OTP and receive a session immediately.
+  if (profile.role === "teacher") {
+    await createSessionCookie(sessionUser);
+    redirect(roleHome("teacher"));
+  }
+
+  // Admins require email OTP verification before a session is created.
   const otpCode = generateOTP();
   const hashedOTP = await hashOTP(otpCode);
 
   try {
     await storeOTP(emailLower, hashedOTP);
     await sendOTPEmail(emailLower, otpCode);
-    await setPendingAuthCookie({
-      sub: data.user.id,
-      email: emailLower,
-      role: profile.role,
-    });
+    await setPendingAuthCookie(sessionUser);
   } catch (error) {
     console.error("Could not start OTP verification:", error);
     return {

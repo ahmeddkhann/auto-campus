@@ -28,13 +28,13 @@ export default function LandingPage() {
             href="/login"
             className="rounded-full bg-white px-8 py-4 text-lg font-medium text-blue-700 transition-colors hover:bg-blue-50"
           >
-            Admin Login
+            Sign in
           </Link>
           <Link
-            href="/signup"
+            href="/admission"
             className="rounded-full border border-white/40 bg-white/10 px-8 py-4 text-lg font-medium text-white transition-colors hover:bg-white/20"
           >
-            Sign Up as Admin
+            Apply for admission
           </Link>
         </div>
 

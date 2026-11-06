@@ -34,20 +34,12 @@ export function Navbar() {
             </Link>
           ))}
 
-          <div className="flex gap-3">
-            <Link
-              href="/login"
-              className="rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              Login
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-full bg-white px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50"
-            >
-              Get Started
-            </Link>
-          </div>
+          <Link
+            href="/login"
+            className="rounded-full bg-white px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50"
+          >
+            Sign in
+          </Link>
         </div>
 
         <button
@@ -77,16 +69,9 @@ export function Navbar() {
             <Link
               href="/login"
               onClick={() => setIsMenuOpen(false)}
-              className="font-medium text-white/80 hover:text-white"
-            >
-              Login
-            </Link>
-            <Link
-              href="/signup"
-              onClick={() => setIsMenuOpen(false)}
               className="rounded-full bg-white px-4 py-2 text-center text-sm font-medium text-blue-700"
             >
-              Get Started
+              Sign in
             </Link>
           </div>
         </div>

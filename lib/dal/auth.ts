@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getSession } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
  * Verifies the signed session cookie and loads the matching profile.
@@ -13,8 +13,8 @@ export async function verifySession() {
     return { user: null, profile: null };
   }
 
-  const supabase = await createClient();
-  const { data: profile, error } = await supabase
+  const admin = createSupabaseAdmin();
+  const { data: profile, error } = await admin
     .from("profiles")
     .select("*")
     .eq("id", session.sub)
@@ -31,19 +31,7 @@ export async function verifySession() {
  * Returns the current user's profile, or null when not signed in.
  */
 export async function getUser() {
-  const session = await getSession();
-
-  if (!session) {
-    return null;
-  }
-
-  const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", session.sub)
-    .maybeSingle();
-
+  const { profile } = await verifySession();
   return profile;
 }
 
@@ -75,13 +63,20 @@ export async function requireTeacher() {
  * Gets the `teachers.id` for the currently authenticated user.
  */
 export async function getTeacherIdForAuth(): Promise<string | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_teacher_id_for_auth");
+  const session = await getSession();
+  if (!session) return null;
+
+  const admin = createSupabaseAdmin();
+  const { data, error } = await admin
+    .from("teachers")
+    .select("id")
+    .eq("profile_id", session.sub)
+    .maybeSingle();
 
   if (error) {
     console.error("Error getting teacher ID for auth:", error);
     return null;
   }
 
-  return data;
+  return data?.id ?? null;
 }

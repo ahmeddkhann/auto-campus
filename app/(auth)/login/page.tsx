@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 
 import { login, type AuthState } from "@/actions/auth";
@@ -15,7 +14,8 @@ export default function LoginPage() {
     <>
       <h1 className="mb-2 text-center text-2xl font-bold">Welcome back</h1>
       <p className="mb-6 text-center text-sm text-zinc-500">
-        Sign in to Auto Campus. We&apos;ll email you a 6-digit code.
+        Sign in with your email and password. Admins will receive a 6-digit
+        verification code; teachers go straight to their dashboard.
       </p>
 
       {state?.error && (
@@ -63,16 +63,9 @@ export default function LoginPage() {
           disabled={pending}
           className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? "Sending code..." : "Sign in"}
+          {pending ? "Signing in..." : "Sign in"}
         </button>
       </form>
-
-      <p className="mt-6 text-center text-sm text-zinc-500">
-        Need an admin account?{" "}
-        <Link href="/signup" className="font-semibold text-blue-600">
-          Create one
-        </Link>
-      </p>
     </>
   );
 }

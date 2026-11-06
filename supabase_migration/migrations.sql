@@ -40,6 +40,7 @@ CREATE TABLE public.students (
   profile_id uuid,
   roll_number text NOT NULL,
   full_name text NOT NULL,
+  email text,
   father_name text,
   mother_name text,
   date_of_birth date,
@@ -95,6 +96,15 @@ CREATE TABLE public.student_subjects (
   CONSTRAINT student_subjects_pkey PRIMARY KEY (id),
   CONSTRAINT student_subjects_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT student_subjects_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id)
+);
+CREATE TABLE public.section_subjects (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  section_id uuid NOT NULL,
+  subject_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT section_subjects_pkey PRIMARY KEY (id),
+  CONSTRAINT section_subjects_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.sections(id),
+  CONSTRAINT section_subjects_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id)
 );
 CREATE TABLE public.tests (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

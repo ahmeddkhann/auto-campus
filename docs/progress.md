@@ -1,6 +1,6 @@
 # Auto Campus — Progress Tracker
 
-> Last updated: Oct 30, 2026
+> Last updated: Nov 7, 2026
 
 ---
 
@@ -8,19 +8,49 @@
 
 | Phase | Name                     | Status         | Progress |
 | ----- | ------------------------ | -------------- | -------- |
-| 1     | Foundation & Database    | 🟡 In Progress | 50%      |
-| 2     | Authentication           | 🔲 Not Started | 0%       |
-| 3     | Admin Panel              | 🔲 Not Started | 0%       |
+| 1     | Foundation & Database    | ✅ Complete    | 100%     |
+| 2     | Authentication           | ✅ Complete    | 100%     |
+| 3     | Admin Panel              | 🟡 In Progress | 85%      |
 | 4     | Teacher Panel            | 🔲 Not Started | 0%       |
-| 5     | Admission System         | 🔲 Not Started | 0%       |
+| 5     | Admission System         | 🟡 In Progress | 60%      |
 | 6     | Customizable Website     | 🔲 Not Started | 0%       |
 | 7     | AI Integration           | 🔲 Not Started | 0%       |
 
-**Overall Progress**: ~7% — Database schema, RLS, storage buckets, and seed data complete. Remaining Phase 1 work: dependencies, folder structure, Supabase clients, TypeScript types.
+**Overall Progress**: ~55% — Admin remaining modules shipped (assignments, heads, student detail, teacher attendance, staff, principal, scholarships, fines, fees, salaries, maintenance, admission review). Teacher panel, website theming, AI, and avatar upload still pending.
 
 ---
 
 ## Changelog
+
+### Nov 7, 2026
+- ✅ Teacher assignment matrix (`/admin/teachers/assignments`)
+- ✅ Global head-teacher overview (`/admin/head-teachers`)
+- ✅ Student detail with subjects + marks history; `uses_transport` on student form
+- ✅ Teacher attendance mark / history / reports
+- ✅ Support staff CRUD + principal upsert
+- ✅ Scholarships grant/list/deactivate; fines impose/list/mark paid
+- ✅ Fees: structures → generate → collection → reports
+- ✅ Salaries overview + monthly process + payment history
+- ✅ Maintenance costs CRUD + monthly summary
+- ✅ Admission review approve/reject + minimal public `/admission` form
+- ✅ Sidebar/nav titles updated for new admin modules
+- ✅ `changes_schema.sql`: `uses_transport`, `rejection_reason`, salary unique index
+- ✅ Teachers created without section/subject assignment (assign later on section page)
+- ✅ Students created without subject picker; auto-enrolled in section subjects
+- ✅ Section management page: subjects, teachers, permanent/temporary head teachers
+- ✅ Added `section_subjects` to `changes_schema.sql` (apply manually in Supabase)
+
+### Nov 6, 2026
+- ✅ Admin layout with left sidebar, header, logout
+- ✅ Site settings page (`site_settings`)
+- ✅ Admin profile page (own details + optional password)
+- ✅ Classes/sections and subjects minimal CRUD
+- ✅ Admins: add + read-only list; welcome email with credentials
+- ✅ Teachers: full CRUD, class/subject filters, welcome email
+- ✅ Students: full CRUD, class/subject filters, enrollment confirmation email (no credentials)
+- ✅ Login: OTP required for admins only; teachers skip OTP
+- ✅ Removed public signup CTA from landing/navbar
+- ✅ Added `supabase_migration/changes_schema.sql` — `students.email` + index (apply manually in Supabase)
 
 ### Oct 30, 2026
 - ✅ Updated `attendance_status` enum: changed from `(present, absent, late, excused)` to `(present, absent, leave)`
@@ -91,72 +121,54 @@
 ---
 
 ## Phase 1: Foundation & Database Setup
-**Status**: 🟡 In Progress
+**Status**: ✅ Complete
 
-- [ ] Install core dependencies (Supabase, Zod, shadcn/ui, etc.)
-- [ ] Initialize shadcn/ui
-- [ ] Create folder structure (`lib/`, `components/`, route groups)
-- [ ] Set up Supabase clients (browser, server, admin)
-- [ ] Create `.env.local` with environment variables
+- [x] Install core dependencies (Supabase, Zod, etc.)
+- [ ] Initialize shadcn/ui (deferred — using Tailwind forms for now)
+- [x] Create folder structure (`lib/`, `components/`, route groups)
+- [x] Set up Supabase clients (browser, server, admin)
+- [x] Create `.env.local` with environment variables
 - [x] Write and apply database migration (all tables + enums)
 - [x] Set up Row-Level Security (RLS) policies
 - [x] Seed default data (classes, site_settings, ai_settings)
-- [ ] Apply attendance system migration (`migrations/attendance_system.sql`):
-  - [ ] Create `head_teacher_type` and `attendance_status` enums
-  - [ ] Create `section_head_teachers` table with partial unique indexes
-  - [ ] Create `student_attendance` and `teacher_attendance` tables with indexes
-  - [ ] Create `is_active_head_teacher()` and `get_teacher_id_for_auth()` helper functions
-  - [ ] Set up attendance RLS policies (8 policies across 3 tables)
-  - [ ] Create `updated_at` triggers for attendance tables
-- [ ] Apply financial system migration (`migrations/financial_system.sql`):
-  - [ ] Create `fee_type` and `fee_status` enums
-  - [ ] ALTER `teachers` to add `salary` column
-  - [ ] Create `support_staff` and `principal` tables
-  - [ ] Create `fee_structures`, `student_fees`, `fee_payments` tables
-  - [ ] Create `student_fines` and `student_scholarships` tables
-  - [ ] Create `salary_payments` table
-  - [ ] Create `maintenance_costs` table
-  - [ ] Set up financial RLS policies (10 policies across 9 tables)
-  - [ ] Create `updated_at` triggers for financial tables
+- [x] Attendance + financial tables present in live schema dump
 - [ ] Generate TypeScript types from Supabase schema
+- [ ] Apply `supabase_migration/changes_schema.sql` (`students.email`) manually
 
 ---
 
 ## Phase 2: Authentication
-**Status**: 🟡 In Progress
+**Status**: ✅ Complete
 
-- [x] Implement session management (JWT encrypt/decrypt via Jose) — lib/auth/session.ts created
-- [x] Implement OTP generation, hashing, storage — lib/auth/otp.ts created
-- [x] Implement Nodemailer Gmail transport — lib/auth/mail.ts created
-- [x] Build login page (email + password) — app/(auth)/login/page.tsx created
-- [x] Build OTP verification page — app/(auth)/verify-otp/page.tsx created
-- [x] Build admin signup page — app/(auth)/signup/page.tsx created
-- [x] Build landing page with responsive navbar — app/page.tsx + components/ui/navbar.tsx created
-- [ ] Implement logout functionality — pending
-- [x] Set up `proxy.ts` for route protection — proxy.ts created
-- [x] Create Data Access Layer (`verifySession`, `getUser`) — lib/dal/auth.ts created
-- [x] Add admin user migration — supabase_migration/add_admin_user.sql created
-- [ ] Test full login → OTP → dashboard flow — pending
+- [x] Implement session management (JWT encrypt/decrypt via Jose)
+- [x] Implement OTP generation, hashing, storage
+- [x] Implement Nodemailer SMTP transport
+- [x] Build login page (email + password)
+- [x] Build OTP verification page (admins only)
+- [x] Teachers skip OTP after password login
+- [x] Logout functionality
+- [x] Set up `proxy.ts` for route protection
+- [x] Create Data Access Layer (`verifySession`, `getUser`, `requireAdmin`)
+- [x] Public signup CTA removed from landing (bootstrap `/signup` route retained)
 
 ---
 
 ## Phase 3: Admin Panel
-**Status**: 🔲 Not Started
+**Status**: 🟡 In Progress
 
-- [ ] Build dashboard layout (sidebar + header)
-- [ ] Admin dashboard page with stats cards
-- [ ] Class & section management (CRUD)
-- [ ] Subject management (CRUD)
-- [ ] Admin user management (add/edit/deactivate)
-- [ ] Teacher management (add/edit/assign sections & subjects)
-- [ ] Student management (add/edit/transfer sections)
-- [ ] Student detail page (profile, subjects, marks history)
-- [ ] Teacher assignment matrix
-- [ ] Head teacher management page:
-  - [ ] View all sections with current head teachers
-  - [ ] Appoint/remove permanent head teachers
-  - [ ] Appoint temporary head teachers (1d/3d/7d/15d/30d)
-  - [ ] Validation (one section per teacher, non-head for temp)
+- [x] Build dashboard layout (sidebar + header)
+- [x] Admin dashboard page with stats cards
+- [x] Class & section management (sections CRUD; classes seeded)
+- [x] Subject management (CRUD)
+- [x] Admin user management (add + read-only list; own profile update)
+- [x] Teacher management (add/edit/delete; assign via section page; class/subject filters)
+- [x] Student management (add/edit/delete; auto subjects from section; class/subject filters; status)
+- [x] Site settings page
+- [x] Profile page (personal details + optional password; avatar URL field)
+- [x] Section management (subjects + teachers + head teachers)
+- [x] Head teacher management (permanent + temporary 1d/3d/7d/15d/30d on section page)
+- [ ] Student detail page (marks history)
+- [ ] Teacher assignment matrix (dedicated view)
 - [ ] Teacher attendance page:
   - [ ] Mark daily teacher attendance (bulk)
   - [ ] View teacher attendance history
@@ -175,7 +187,6 @@
 - [ ] Support staff management (CRUD, non-login)
 - [ ] Principal management (profile, salary)
 - [ ] Maintenance costs tracking (record, view history, monthly summary)
-- [ ] Profile page with avatar upload
 
 ---
 
