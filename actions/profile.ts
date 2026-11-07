@@ -2,16 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAdmin } from "@/lib/dal/auth";
+import { getSession } from "@/lib/auth/session";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import type { ActionState } from "@/lib/utils/action-state";
 import { profileUpdateSchema } from "@/validations/profile";
 
-export async function updateAdminProfile(
+async function updateOwnProfile(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const session = await requireAdmin();
+  const session = await getSession();
+  if (!session || (session.role !== "admin" && session.role !== "teacher")) {
+    return { error: "You must be signed in to update your profile." };
+  }
 
   const parsed = profileUpdateSchema.safeParse({
     full_name: formData.get("full_name"),
@@ -49,7 +52,23 @@ export async function updateAdminProfile(
     }
   }
 
-  revalidatePath("/admin/profile");
-  revalidatePath("/admin", "layout");
+  if (session.role === "admin") {
+    revalidatePath("/admin/profile");
+    revalidatePath("/admin", "layout");
+  } else {
+    revalidatePath("/teacher/profile");
+    revalidatePath("/teacher", "layout");
+  }
+
   return { success: "Profile updated." };
 }
+
+/** @deprecated Prefer updateOwnProfile — kept for admin form imports. */
+export async function updateAdminProfile(
+  prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  return updateOwnProfile(prev, formData);
+}
+
+export { updateOwnProfile };

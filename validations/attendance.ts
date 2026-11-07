@@ -12,3 +12,15 @@ export const bulkTeacherAttendanceSchema = z.object({
     })
   ),
 });
+
+export const bulkStudentAttendanceSchema = z.object({
+  date: z.string().min(1),
+  section_id: z.string().uuid(),
+  entries: z.array(
+    z.object({
+      student_id: z.string().uuid(),
+      status: attendanceStatusSchema,
+      remarks: z.string().max(500).optional().or(z.literal("")),
+    })
+  ),
+});

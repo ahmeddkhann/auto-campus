@@ -54,3 +54,17 @@ export async function listSalaryPayments({
   if (error) throw error;
   return data ?? [];
 }
+
+export async function listOwnSalaryPayments(teacherId: string) {
+  const admin = createSupabaseAdmin();
+  const { data, error } = await admin
+    .from("salary_payments")
+    .select("*")
+    .eq("employee_type", "teacher")
+    .eq("employee_id", teacherId)
+    .order("year", { ascending: false })
+    .order("month", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}

@@ -112,3 +112,54 @@ export async function getTeacherAttendanceReport({
 
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export async function getStudentAttendanceForDate(
+  sectionId: string,
+  date: string
+) {
+  const admin = createSupabaseAdmin();
+  const { data, error } = await admin
+    .from("student_attendance")
+    .select("id, student_id, status, remarks")
+    .eq("section_id", sectionId)
+    .eq("date", date);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listStudentAttendanceHistory({
+  sectionId,
+  studentId,
+  from,
+  to,
+}: {
+  sectionId: string;
+  studentId?: string;
+  from?: string;
+  to?: string;
+}) {
+  const admin = createSupabaseAdmin();
+  let query = admin
+    .from("student_attendance")
+    .select(
+      `
+      id,
+      date,
+      status,
+      remarks,
+      student_id,
+      students(id, full_name, roll_number)
+    `
+    )
+    .eq("section_id", sectionId)
+    .order("date", { ascending: false });
+
+  if (studentId) query = query.eq("student_id", studentId);
+  if (from) query = query.gte("date", from);
+  if (to) query = query.lte("date", to);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}

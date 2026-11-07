@@ -11,18 +11,26 @@
 | 1     | Foundation & Database    | ✅ Complete    | 100%     |
 | 2     | Authentication           | ✅ Complete    | 100%     |
 | 3     | Admin Panel              | 🟡 In Progress | 85%      |
-| 4     | Teacher Panel            | 🔲 Not Started | 0%       |
+| 4     | Teacher Panel            | ✅ Complete    | 100%     |
 | 5     | Admission System         | 🟡 In Progress | 60%      |
 | 6     | Customizable Website     | 🔲 Not Started | 0%       |
 | 7     | AI Integration           | 🔲 Not Started | 0%       |
 
-**Overall Progress**: ~55% — Admin remaining modules shipped (assignments, heads, student detail, teacher attendance, staff, principal, scholarships, fines, fees, salaries, maintenance, admission review). Teacher panel, website theming, AI, and avatar upload still pending.
+**Overall Progress**: ~70% — Teacher panel complete (dashboard, classes, students, tests, exams, head attendance, own attendance, profile, salary). Website theming, AI, and avatar upload still pending.
 
 ---
 
 ## Changelog
 
 ### Nov 7, 2026
+- ✅ Teacher panel shell (`/teacher` layout, sidebar, header; emerald theme)
+- ✅ Teacher dashboard overview (assigned sections, students, upcoming tests, head badge)
+- ✅ My classes + section detail; students list with filters
+- ✅ Tests: create + enter/edit marks (scoped to assignments)
+- ✅ Exams: create + per-subject marks (scoped to assigned subjects)
+- ✅ Student attendance mark/history for active head teachers only (nav Option B)
+- ✅ Own attendance history (`/teacher/my-attendance`)
+- ✅ Teacher profile update + read-only My salary (`/teacher/salary`)
 - ✅ Teacher assignment matrix (`/admin/teachers/assignments`)
 - ✅ Global head-teacher overview (`/admin/head-teachers`)
 - ✅ Student detail with subjects + marks history; `uses_transport` on student form
@@ -191,21 +199,23 @@
 ---
 
 ## Phase 4: Teacher Panel
-**Status**: 🔲 Not Started
+**Status**: ✅ Complete
 
-- [ ] Teacher dashboard with assigned classes overview
-- [ ] View assigned sections and students
-- [ ] Create test (select section, subject, enter details)
-- [ ] Enter/edit test marks for students
-- [ ] Create exam (select section, enter details)
-- [ ] Enter/edit exam marks (per subject per student)
-- [ ] View test/exam history and summaries
-- [ ] Student attendance (head teachers only):
-  - [ ] Mark daily attendance for section students (bulk)
-  - [ ] View section attendance history
-  - [ ] Access restricted to active head teachers
-- [ ] View own attendance history (all teachers)
-- [ ] Teacher profile page
+- [x] Teacher dashboard with assigned classes overview
+- [x] View assigned sections and students
+- [x] Create test (select section, subject, enter details)
+- [x] Enter/edit test marks for students
+- [x] Create exam (select section, enter details)
+- [x] Enter/edit exam marks (per subject per student)
+- [x] View test/exam history and summaries
+- [x] Student attendance (head teachers only):
+  - [x] Mark daily attendance for section students (bulk)
+  - [x] View section attendance history
+  - [x] Access restricted to active head teachers
+  - [x] Attendance nav shown only when teacher is an active head
+- [x] View own attendance history (all teachers)
+- [x] Teacher profile page
+- [x] Read-only My salary page (intentional extra beyond original Phase 4 checklist)
 
 ---
 
