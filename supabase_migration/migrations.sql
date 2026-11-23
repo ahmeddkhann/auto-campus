@@ -35,6 +35,17 @@ CREATE TABLE public.subjects (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT subjects_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.vehicles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  registration_number text UNIQUE,
+  capacity integer CHECK (capacity IS NULL OR capacity > 0),
+  monthly_fee numeric NOT NULL DEFAULT 0 CHECK (monthly_fee >= 0::numeric),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT vehicles_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.students (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   profile_id uuid,
@@ -49,13 +60,16 @@ CREATE TABLE public.students (
   phone text,
   avatar_url text,
   section_id uuid NOT NULL,
+  vehicle_id uuid,
+  uses_transport boolean NOT NULL DEFAULT false,
   status USER-DEFINED NOT NULL DEFAULT 'active'::student_status,
   admitted_at timestamp with time zone NOT NULL DEFAULT now(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT students_pkey PRIMARY KEY (id),
   CONSTRAINT students_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id),
-  CONSTRAINT students_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.sections(id)
+  CONSTRAINT students_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.sections(id),
+  CONSTRAINT students_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id)
 );
 CREATE TABLE public.teachers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -294,7 +308,8 @@ CREATE TABLE public.fee_structures (
 CREATE TABLE public.student_fees (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   student_id uuid NOT NULL,
-  fee_structure_id uuid NOT NULL,
+  fee_structure_id uuid,
+  vehicle_id uuid,
   month integer NOT NULL CHECK (month >= 1 AND month <= 12),
   year integer NOT NULL,
   gross_amount numeric NOT NULL CHECK (gross_amount >= 0::numeric),
@@ -307,7 +322,12 @@ CREATE TABLE public.student_fees (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT student_fees_pkey PRIMARY KEY (id),
   CONSTRAINT student_fees_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
-  CONSTRAINT student_fees_fee_structure_id_fkey FOREIGN KEY (fee_structure_id) REFERENCES public.fee_structures(id)
+  CONSTRAINT student_fees_fee_structure_id_fkey FOREIGN KEY (fee_structure_id) REFERENCES public.fee_structures(id),
+  CONSTRAINT student_fees_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id),
+  CONSTRAINT student_fees_source_check CHECK (
+    (fee_structure_id IS NOT NULL AND vehicle_id IS NULL)
+    OR (fee_structure_id IS NULL AND vehicle_id IS NOT NULL)
+  )
 );
 CREATE TABLE public.fee_payments (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),

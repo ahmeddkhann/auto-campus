@@ -9,6 +9,7 @@ import {
   getStudentExamMarks,
   getStudentTestMarks,
 } from "@/lib/dal/student-detail";
+import { listVehicles } from "@/lib/dal/vehicles";
 
 export const instant = false;
 
@@ -18,12 +19,15 @@ export default async function StudentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [student, sections, testMarks, examMarks] = await Promise.all([
-    getStudentDetail(id),
-    listSections(),
-    getStudentTestMarks(id),
-    getStudentExamMarks(id),
-  ]);
+  const [student, sections, vehicles, testMarks, examMarks] = await Promise.all(
+    [
+      getStudentDetail(id),
+      listSections(),
+      listVehicles({ activeOnly: true }),
+      getStudentTestMarks(id),
+      getStudentExamMarks(id),
+    ]
+  );
 
   if (!student) {
     notFound();
@@ -37,6 +41,9 @@ export default async function StudentDetailPage({
       ? section.classes[0]
       : section.classes
     : null;
+  const vehicle = Array.isArray(student.vehicles)
+    ? student.vehicles[0]
+    : student.vehicles;
 
   const subjects = (student.student_subjects ?? [])
     .map((row: { subjects?: { name?: string; code?: string | null } | Array<{ name?: string; code?: string | null }> }) => {
@@ -54,6 +61,25 @@ export default async function StudentDetailPage({
         : item.name,
     };
   });
+
+  const vehicleOptions = vehicles.map((item) => ({
+    id: item.id,
+    label: `${item.name}${
+      item.registration_number ? ` (${item.registration_number})` : ""
+    } — ${Number(item.monthly_fee).toFixed(2)}/mo`,
+  }));
+
+  if (
+    student.vehicle_id &&
+    !vehicleOptions.some((item) => item.id === student.vehicle_id)
+  ) {
+    vehicleOptions.unshift({
+      id: student.vehicle_id,
+      label: vehicle
+        ? `${vehicle.name} (inactive)`
+        : "Assigned vehicle (inactive)",
+    });
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -90,13 +116,25 @@ export default async function StudentDetailPage({
             </span>{" "}
             <span className="capitalize">{student.status}</span>
           </p>
+          <p>
+            <span className="font-medium text-zinc-900 dark:text-zinc-100">
+              Transport:
+            </span>{" "}
+            {vehicle
+              ? `${vehicle.name}${
+                  vehicle.registration_number
+                    ? ` (${vehicle.registration_number})`
+                    : ""
+                } — ${Number(vehicle.monthly_fee).toFixed(2)}/mo`
+              : "None"}
+          </p>
           <p className="sm:col-span-2">
             <span className="font-medium text-zinc-900 dark:text-zinc-100">
               Subjects:
             </span>{" "}
             {subjects.length
               ? subjects
-                  .map((s) =>
+                  .map((s: { name?: string; code?: string | null }) =>
                     s?.code ? `${s.name} (${s.code})` : s?.name
                   )
                   .join(", ")
@@ -207,6 +245,7 @@ export default async function StudentDetailPage({
         <StudentForm
           mode="edit"
           sections={sectionOptions}
+          vehicles={vehicleOptions}
           defaults={{
             id: student.id,
             full_name: student.full_name ?? "",
@@ -220,7 +259,7 @@ export default async function StudentDetailPage({
             phone: student.phone ?? "",
             section_id: student.section_id,
             status: student.status ?? "active",
-            uses_transport: Boolean(student.uses_transport),
+            vehicle_id: student.vehicle_id,
           }}
         />
       </section>

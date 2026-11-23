@@ -25,17 +25,19 @@ type Defaults = {
   phone?: string;
   section_id?: string;
   status?: string;
-  uses_transport?: boolean;
+  vehicle_id?: string | null;
 };
 
 export function StudentForm({
   mode,
   defaults,
   sections,
+  vehicles,
 }: {
   mode: "create" | "edit";
   defaults?: Defaults;
   sections: Array<{ id: string; label: string }>;
+  vehicles: Array<{ id: string; label: string }>;
 }) {
   const action = mode === "create" ? createStudent : updateStudent;
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -190,14 +192,26 @@ export function StudentForm({
           </select>
         </div>
         <div className="sm:col-span-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="uses_transport"
-              defaultChecked={defaults?.uses_transport ?? false}
-            />
-            Uses school transport (include transport fees when generated)
+          <label htmlFor="vehicle_id" className={labelClassName}>
+            Transport vehicle
           </label>
+          <select
+            id="vehicle_id"
+            name="vehicle_id"
+            defaultValue={defaults?.vehicle_id ?? ""}
+            className={fieldClassName}
+          >
+            <option value="">No transport</option>
+            {vehicles.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-zinc-500">
+            Assigning a vehicle bills that vehicle&apos;s monthly fee when fees
+            are generated.
+          </p>
         </div>
       </div>
 

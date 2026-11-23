@@ -85,7 +85,7 @@ Execute migrations in order:
 7. **Settings tables**: `site_settings`, `ai_settings`
 8. **Attendance tables**: `section_head_teachers`, `student_attendance`, `teacher_attendance`
 9. **Staff tables**: `support_staff`, `principal`
-10. **Financial tables**: `fee_structures`, `student_fees`, `fee_payments`, `student_fines`, `student_scholarships`, `salary_payments`, `maintenance_costs`
+10. **Financial tables**: `vehicles`, `fee_structures`, `student_fees`, `fee_payments`, `student_fines`, `student_scholarships`, `salary_payments`, `maintenance_costs`
 11. **Helper functions**: `is_active_head_teacher()`, `get_teacher_id_for_auth()`
 12. **Indexes**: On all foreign keys and commonly filtered columns (68 custom indexes + partial unique indexes)
 13. **RLS Policies**: Enable RLS on all tables with role-based policies
@@ -242,15 +242,18 @@ Execute migrations in order:
 
 ### 3.10 Fee Management
 
-- **Fee Structures**: Define tuition and transport fee amounts per class per academic year
+- **Vehicles**: Admin adds school transport vehicles (name, registration, capacity, monthly fee, active)
+- **Fee Structures**: Define **tuition** fee amounts per class per academic year (transport is not a class fee structure)
+- **Student transport assignment**: Optional `vehicle_id` on the student; assigned students use that vehicle's monthly fee
 - **Student Fee Generation**: Generate monthly fee records for students
-  - Tuition: required for all students in the class
-  - Transport: optional, assigned to students who use transport
+  - Tuition: required for all students in the class (from fee structures)
+  - Transport: billed from the assigned vehicle's `monthly_fee` when `vehicle_id` is set
 - **Scholarship Application**: Auto-calculate scholarship discount on tuition fees using the student's active scholarship percentage
 - **Fee Collection**: Record payments against student fees
   - Support partial payments (status transitions: pending → partial → paid)
   - Track who received each payment
 - **Fee Reports**: Summary of collected vs. outstanding fees, filter by class/section/month
+- **Admin dashboard**: Vehicles count card linking to vehicle management
 
 ### 3.11 Student Fines
 

@@ -1,4 +1,5 @@
-import { FeeNav } from "@/components/admin/fee-nav";
+import Link from "next/link";
+
 import { cardClassName, fieldClassName } from "@/components/ui/field";
 import { listClassesWithSections } from "@/lib/dal/classes";
 import { listStudentFees } from "@/lib/dal/fees";
@@ -30,11 +31,18 @@ export default async function FeeCollectionPage({
 
   return (
     <div className="space-y-6">
-      <FeeNav current="/admin/fees/collection" />
-      <p className="text-sm text-zinc-500">
-        Collect payments against generated student fee records. Partial payments
-        are supported.
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Collect payments against generated student fee records. Partial
+          payments are supported.
+        </p>
+        <Link
+          href="/admin/fees/structures"
+          className="text-sm font-medium text-blue-600"
+        >
+          ← Fee structures
+        </Link>
+      </div>
 
       <form className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-5">
         <select
@@ -97,6 +105,12 @@ export default async function FeeCollectionPage({
             const structure = Array.isArray(fee.fee_structures)
               ? fee.fee_structures[0]
               : fee.fee_structures;
+            const vehicle = Array.isArray(fee.vehicles)
+              ? fee.vehicles[0]
+              : fee.vehicles;
+            const feeLabel = vehicle
+              ? `transport (${vehicle.name})`
+              : structure?.fee_type ?? "fee";
             const paid = (fee.fee_payments ?? []).reduce(
               (sum: number, p: { amount_paid: number }) =>
                 sum + Number(p.amount_paid),
@@ -110,8 +124,7 @@ export default async function FeeCollectionPage({
                   <div>
                     <p className="font-medium">{student?.full_name}</p>
                     <p className="text-xs text-zinc-500">
-                      {structure?.fee_type} · {fee.month}/{fee.year} ·{" "}
-                      {fee.status}
+                      {feeLabel} · {fee.month}/{fee.year} · {fee.status}
                     </p>
                   </div>
                   <div className="text-sm text-right">

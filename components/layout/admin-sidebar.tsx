@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
+  Bus,
   ClipboardCheck,
   CreditCard,
   GraduationCap,
@@ -45,6 +46,12 @@ const navItems: Array<{
   { href: "/admin/classes", label: "Classes", icon: School },
   { href: "/admin/subjects", label: "Subjects", icon: BookOpen },
   {
+    href: "/admin/vehicles",
+    label: "Vehicles",
+    icon: Bus,
+    matchPrefix: "/admin/vehicles",
+  },
+  {
     href: "/admin/attendance/teachers",
     label: "Teacher attendance",
     icon: ClipboardCheck,
@@ -69,7 +76,7 @@ const navItems: Array<{
   { href: "/admin/admissions", label: "Admissions", icon: FileText },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/profile", label: "Profile", icon: UserCircle },
-];
+].sort((a, b) => a.label.localeCompare(b.label, "en"));
 
 function isActive(
   pathname: string,
@@ -111,7 +118,7 @@ export function AdminSidebar({
       ) : null}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-zinc-200 bg-white transition-transform dark:border-zinc-800 dark:bg-zinc-950 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex h-dvh w-64 flex-col overflow-hidden border-r border-zinc-200 bg-white transition-transform dark:border-zinc-800 dark:bg-zinc-950 lg:sticky lg:top-0 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -123,7 +130,7 @@ export function AdminSidebar({
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(

@@ -1,4 +1,5 @@
-import { AttendanceNav } from "@/components/admin/attendance-nav";
+import Link from "next/link";
+
 import { cardClassName, fieldClassName } from "@/components/ui/field";
 import {
   listTeacherAttendanceHistory,
@@ -24,10 +25,17 @@ export default async function TeacherAttendanceHistoryPage({
 
   return (
     <div className="space-y-6">
-      <AttendanceNav current="/admin/attendance/teachers/history" />
-      <p className="text-sm text-zinc-500">
-        Browse teacher attendance history by teacher and date range.
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Browse teacher attendance history by teacher and date range.
+        </p>
+        <Link
+          href="/admin/attendance/teachers"
+          className="text-sm font-medium text-blue-600"
+        >
+          ← Mark attendance
+        </Link>
+      </div>
 
       <form className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-4">
         <select

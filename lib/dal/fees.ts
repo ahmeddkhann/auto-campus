@@ -41,6 +41,7 @@ export async function listStudentFees({
         sections(id, name, class_id, classes(id, name))
       ),
       fee_structures(id, fee_type, amount, academic_year),
+      vehicles(id, name, registration_number, monthly_fee),
       fee_payments(id, amount_paid)
     `
     )

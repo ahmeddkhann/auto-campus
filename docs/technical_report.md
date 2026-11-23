@@ -103,7 +103,8 @@ profiles ──────── users (Supabase Auth)
                    ├── student_attendance
                    ├── student_fees ──── fee_payments
                    ├── student_fines
-                   └── student_scholarships
+                   ├── student_scholarships
+                   └── vehicles (optional transport)
 
 classes ──┬── sections ──┬── students
           │              └── section_head_teachers
@@ -111,7 +112,9 @@ classes ──┬── sections ──┬── students
           │    ├── tests ──── test_marks
           │    └── exams ──── exam_marks
           │
-          └── fee_structures
+          └── fee_structures (tuition only)
+
+vehicles ──── student_fees (transport rows via vehicle_id)
 
 support_staff ──── salary_payments (employee_type = 'support_staff')
 principal ──────── salary_payments (employee_type = 'principal')
@@ -183,10 +186,28 @@ Extends Supabase Auth users with application-specific data.
 | phone        | text        | NULLABLE                   | Contact number                |
 | avatar_url   | text        | NULLABLE                   | Profile picture URL           |
 | section_id   | uuid        | FK → sections.id, NOT NULL | Current section assignment    |
+| vehicle_id   | uuid        | FK → vehicles.id, NULLABLE | Assigned transport vehicle    |
+| uses_transport | boolean   | NOT NULL, DEFAULT false    | Deprecated sync of vehicle_id |
+| email        | text        | NULLABLE                   | Enrollment email              |
 | status       | text        | DEFAULT 'active'           | active / inactive / graduated |
 | admitted_at  | timestamptz | DEFAULT now()              | Admission date                |
 | created_at   | timestamptz | DEFAULT now()              | Record creation time          |
 | updated_at   | timestamptz | DEFAULT now()              | Last update time              |
+
+#### `vehicles`
+
+School transport vehicles. Monthly fee is billed to assigned students on generate.
+
+| Column               | Type        | Constraints                         | Description                |
+| -------------------- | ----------- | ----------------------------------- | -------------------------- |
+| id                   | uuid        | PK                                  | Unique identifier          |
+| name                 | text        | NOT NULL                            | Display name               |
+| registration_number  | text        | UNIQUE, NULLABLE                    | Plate / registration       |
+| capacity             | integer     | NULLABLE, CHECK > 0                 | Seat capacity              |
+| monthly_fee          | numeric     | NOT NULL, DEFAULT 0, CHECK >= 0     | Transport fee per month     |
+| is_active            | boolean     | NOT NULL, DEFAULT true              | Soft-disable without delete|
+| created_at           | timestamptz | DEFAULT now()                       | Record creation time       |
+| updated_at           | timestamptz | DEFAULT now()                       | Last update time           |
 
 #### `teachers`
 
@@ -425,13 +446,13 @@ School principal record (typically one row).
 
 #### `fee_structures`
 
-Defines fee amounts per class, per type (tuition/transport), per academic year.
+Defines **tuition** fee amounts per class per academic year. Transport amounts live on `vehicles`.
 
 | Column        | Type        | Constraints                              | Description                    |
 | ------------- | ----------- | ---------------------------------------- | ------------------------------ |
 | id            | uuid        | PK                                       | Unique identifier              |
 | class_id      | uuid        | FK → classes.id, NOT NULL                | Which class this fee applies to|
-| fee_type      | fee_type    | NOT NULL                                 | tuition / transport            |
+| fee_type      | fee_type    | NOT NULL                                 | Prefer `tuition` for new rows  |
 | amount        | numeric     | NOT NULL, CHECK >= 0                     | Fee amount                     |
 | academic_year | text        | NOT NULL                                 | Academic year (e.g., 2026-27)  |
 | created_at    | timestamptz | DEFAULT now()                            | Record creation time           |
@@ -440,13 +461,14 @@ Defines fee amounts per class, per type (tuition/transport), per academic year.
 
 #### `student_fees`
 
-Individual monthly fee records per student.
+Individual monthly fee records per student. Tuition rows reference `fee_structures`; transport rows reference `vehicles`.
 
 | Column               | Type        | Constraints                                         | Description                          |
 | -------------------- | ----------- | --------------------------------------------------- | ------------------------------------ |
 | id                   | uuid        | PK                                                  | Unique identifier                    |
 | student_id           | uuid        | FK → students.id, NOT NULL                          | The student                          |
-| fee_structure_id     | uuid        | FK → fee_structures.id, NOT NULL                    | Which fee structure                  |
+| fee_structure_id     | uuid        | FK → fee_structures.id, NULLABLE                    | Tuition structure (null for transport)|
+| vehicle_id           | uuid        | FK → vehicles.id, NULLABLE                          | Transport vehicle (null for tuition) |
 | month                | integer     | NOT NULL, CHECK 1-12                                | Fee month                            |
 | year                 | integer     | NOT NULL                                            | Fee year                             |
 | gross_amount         | numeric     | NOT NULL, CHECK >= 0                                | Original amount                      |
@@ -457,7 +479,9 @@ Individual monthly fee records per student.
 | due_date             | date        | NOT NULL                                            | Payment due date                     |
 | created_at           | timestamptz | DEFAULT now()                                       | Record creation time                 |
 | updated_at           | timestamptz | DEFAULT now()                                       | Last update time                     |
-| UNIQUE               |             | (student_id, fee_structure_id, month, year)         | One record per student/fee/period    |
+| CHECK                |             | exactly one of fee_structure_id / vehicle_id        | Source of the fee line               |
+| UNIQUE (partial)     |             | (student_id, fee_structure_id, month, year)         | One tuition row per period           |
+| UNIQUE (partial)     |             | (student_id, vehicle_id, month, year)               | One transport row per period         |
 
 #### `fee_payments`
 
@@ -656,6 +680,7 @@ Supabase RLS policies will enforce:
 | ---------------------- | ---------------------------------- | --------- | ------- | ------------------------------------------------------ |
 | `support_staff`        | `admin_all_support_staff`          | ALL       | Admin   | Full CRUD                                              |
 | `principal`            | `admin_all_principal`              | ALL       | Admin   | Full CRUD                                              |
+| `vehicles`             | `admin_all_vehicles`               | ALL       | Admin   | Full CRUD                                              |
 | `fee_structures`       | `admin_all_fee_structures`         | ALL       | Admin   | Full CRUD                                              |
 | `student_fees`         | `admin_all_student_fees`           | ALL       | Admin   | Full CRUD                                              |
 | `fee_payments`         | `admin_all_fee_payments`           | ALL       | Admin   | Full CRUD                                              |
@@ -716,6 +741,8 @@ app/
 │   │   │       └── page.tsx     # Student detail/edit
 │   │   ├── subjects/
 │   │   │   └── page.tsx         # Manage subjects
+│   │   ├── vehicles/
+│   │   │   └── page.tsx         # Transport vehicles + monthly fees
 │   │   ├── admissions/
 │   │   │   └── page.tsx         # Review admissions
 │   │   ├── website/
@@ -1021,12 +1048,15 @@ Active head = temporary (while not expired) > permanent
 
 #### Fee System
 
-Two fee types per class: **tuition** (required) and **transport** (optional).
+**Tuition** comes from class fee structures. **Transport** comes from the student's assigned vehicle.
 
 ```
-Admin defines Fee Structures (per class, per type, per academic year)
+Admin defines tuition Fee Structures (per class, per academic year)
+Admin defines Vehicles (name, monthly_fee, …) and assigns students.vehicle_id
     ↓
-System generates Student Fees monthly (gross amount from structure)
+System generates Student Fees monthly:
+  - tuition: gross from fee_structures
+  - transport: gross from vehicles.monthly_fee when vehicle_id is set
     ↓
 Scholarship discount applied to tuition fees (if student has active scholarship)
     ↓
@@ -1037,8 +1067,9 @@ net_amount = gross_amount - scholarship_discount + fine_amount
 Admin collects Fee Payments → status updated (pending → partial → paid)
 ```
 
-- Fee structures are defined per class per academic year
-- Transport fees are optional — only assigned to students who use transport
+- Tuition fee structures are defined per class per academic year
+- Transport fees are owned by vehicles; students on a vehicle are billed that monthly fee
+- Historical class-level transport fee_structures rows may remain; new generation ignores them
 - Scholarships are percentage-based and deducted from tuition fees only
 - Multiple partial payments are supported per fee record
 - Fee status transitions: pending → partial (some paid) → paid (fully paid); overdue (past due date)

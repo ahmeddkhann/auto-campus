@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { generateStudentFees } from "@/actions/fees";
-import { FeeNav } from "@/components/admin/fee-nav";
 import { FormAlert } from "@/components/ui/form-alert";
 import {
   buttonPrimaryClassName,
@@ -23,11 +23,16 @@ export default function GenerateFeesPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
-      <FeeNav current="/admin/fees/generate" />
+      <Link
+        href="/admin/fees/structures"
+        className="text-sm font-medium text-blue-600"
+      >
+        ← Fee structures
+      </Link>
       <p className="text-sm text-zinc-500">
-        Create monthly fee records for active students. Tuition applies to all;
-        transport applies when the student has uses_transport enabled.
-        Active scholarships discount tuition only.
+        Create monthly fee records for active students. Tuition comes from class
+        fee structures; transport comes from the student&apos;s assigned
+        vehicle monthly fee. Active scholarships discount tuition only.
       </p>
       <form action={formAction} className={`${cardClassName} space-y-4`}>
         <FormAlert error={state?.error} success={state?.success} />

@@ -1,6 +1,6 @@
 # Auto Campus — Progress Tracker
 
-> Last updated: Nov 7, 2026
+> Last updated: Nov 24, 2026
 
 ---
 
@@ -21,6 +21,12 @@
 ---
 
 ## Changelog
+
+### Nov 24, 2026
+- ✅ Vehicle-based transport fees: `vehicles` table, `students.vehicle_id`, vehicle-linked `student_fees`
+- ✅ Admin Vehicles CRUD + dashboard Vehicles card; student form vehicle select (replaces transport checkbox)
+- ✅ Fee structures are tuition-only; generate bills transport from assigned vehicle monthly fee
+- ✅ Docs + `changes_schema.sql` / `migrations.sql` dump updated for the vehicle model
 
 ### Nov 7, 2026
 - ✅ Teacher panel shell (`/teacher` layout, sidebar, header; emerald theme)
@@ -284,6 +290,7 @@
 | Oct 29, 2026 | Teacher attendance marked by admin only                 | Admin has full visibility and control over teacher attendance records |
 | Oct 30, 2026 | Student attendance statuses: present, absent, leave only | Simplified from 4 statuses; `leave` covers both excused and pre-approved absence |
 | Oct 30, 2026 | Two fee types: tuition (required) + transport (optional) | Transport is opt-in per student; tuition applies to all students in a class |
+| Nov 24, 2026 | Transport fee owned by vehicle, not class fee structure | Admin defines vehicles with monthly fee; student `vehicle_id` assigns transport; generate copies vehicle fee into `student_fees` |
 | Oct 30, 2026 | Scholarships as percentage on tuition fees only          | Percentage-based discount (1-100%) applied when generating monthly fee records |
 | Oct 30, 2026 | Unified `salary_payments` table for all staff types      | Single table with `employee_type` discriminator avoids three separate payment tables |
 | Oct 30, 2026 | Support staff and principal cannot login                  | Data-only records managed by admin; no auth.users or profiles rows needed |

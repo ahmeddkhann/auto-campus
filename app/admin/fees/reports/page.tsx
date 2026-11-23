@@ -1,4 +1,5 @@
-import { FeeNav } from "@/components/admin/fee-nav";
+import Link from "next/link";
+
 import { cardClassName, fieldClassName } from "@/components/ui/field";
 import { getFeeReport } from "@/lib/dal/fees";
 
@@ -17,10 +18,17 @@ export default async function FeeReportsPage({
 
   return (
     <div className="space-y-6">
-      <FeeNav current="/admin/fees/reports" />
-      <p className="text-sm text-zinc-500">
-        Collected vs outstanding fees for the selected period.
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Collected vs outstanding fees for the selected period.
+        </p>
+        <Link
+          href="/admin/fees/structures"
+          className="text-sm font-medium text-blue-600"
+        >
+          ← Fee structures
+        </Link>
+      </div>
 
       <form className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-3">
         <input

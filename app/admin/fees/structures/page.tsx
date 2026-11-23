@@ -1,5 +1,6 @@
+import Link from "next/link";
+
 import { deleteFeeStructure } from "@/actions/fees";
-import { FeeNav } from "@/components/admin/fee-nav";
 import {
   buttonSecondaryClassName,
   cardClassName,
@@ -19,10 +20,29 @@ export default async function FeeStructuresPage() {
 
   return (
     <div className="space-y-6">
-      <FeeNav current="/admin/fees/structures" />
-      <p className="text-sm text-zinc-500">
-        Define tuition and transport amounts per class and academic year.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Define tuition amounts per class and academic year. Transport fees are
+          set on Vehicles.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/fees/generate"
+            className={buttonSecondaryClassName}
+          >
+            Generate
+          </Link>
+          <Link
+            href="/admin/fees/collection"
+            className={buttonSecondaryClassName}
+          >
+            Collection
+          </Link>
+          <Link href="/admin/fees/reports" className={buttonSecondaryClassName}>
+            Reports
+          </Link>
+        </div>
+      </div>
 
       <FeeStructureForm
         classes={classes.map((c) => ({ id: c.id, name: c.name }))}

@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { StudentAttendanceNav } from "@/components/teacher/student-attendance-nav";
 import {
   cardClassName,
   fieldClassName,
@@ -50,10 +50,17 @@ export default async function TeacherStudentAttendanceHistoryPage({
 
   return (
     <div className="space-y-6">
-      <StudentAttendanceNav current="/teacher/attendance/history" />
-      <p className="text-sm text-zinc-500">
-        Attendance history for sections you actively head.
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Attendance history for sections you actively head.
+        </p>
+        <Link
+          href="/teacher/attendance"
+          className="text-sm font-medium text-emerald-600"
+        >
+          ← Mark attendance
+        </Link>
+      </div>
 
       <form className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-2 lg:grid-cols-5">
         <div>

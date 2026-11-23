@@ -32,13 +32,14 @@ export async function createStudent(
     phone: formData.get("phone") || "",
     section_id: formData.get("section_id"),
     status: formData.get("status") || "active",
-    uses_transport: formData.get("uses_transport") === "on",
+    vehicle_id: formData.get("vehicle_id") || "",
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid student data." };
   }
 
+  const vehicleId = parsed.data.vehicle_id || null;
   const admin = createSupabaseAdmin();
   const { data: student, error } = await admin
     .from("students")
@@ -54,7 +55,8 @@ export async function createStudent(
       phone: parsed.data.phone || null,
       section_id: parsed.data.section_id,
       status: parsed.data.status,
-      uses_transport: parsed.data.uses_transport,
+      vehicle_id: vehicleId,
+      uses_transport: Boolean(vehicleId),
     })
     .select("id, full_name, email")
     .single();
@@ -108,13 +110,14 @@ export async function updateStudent(
     phone: formData.get("phone") || "",
     section_id: formData.get("section_id"),
     status: formData.get("status") || "active",
-    uses_transport: formData.get("uses_transport") === "on",
+    vehicle_id: formData.get("vehicle_id") || "",
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid student data." };
   }
 
+  const vehicleId = parsed.data.vehicle_id || null;
   const admin = createSupabaseAdmin();
   const { error } = await admin
     .from("students")
@@ -130,7 +133,8 @@ export async function updateStudent(
       phone: parsed.data.phone || null,
       section_id: parsed.data.section_id,
       status: parsed.data.status,
-      uses_transport: parsed.data.uses_transport,
+      vehicle_id: vehicleId,
+      uses_transport: Boolean(vehicleId),
       updated_at: new Date().toISOString(),
     })
     .eq("id", parsed.data.id);

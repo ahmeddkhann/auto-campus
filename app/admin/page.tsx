@@ -13,17 +13,19 @@ async function count(table: string) {
 }
 
 export default async function AdminDashboardPage() {
-  const [teachers, students, admins, classes, subjects] = await Promise.all([
-    count("teachers"),
-    count("students"),
-    createSupabaseAdmin()
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "admin")
-      .then(({ count }) => count ?? 0),
-    count("classes"),
-    count("subjects"),
-  ]);
+  const [teachers, students, admins, classes, subjects, vehicles] =
+    await Promise.all([
+      count("teachers"),
+      count("students"),
+      createSupabaseAdmin()
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "admin")
+        .then(({ count }) => count ?? 0),
+      count("classes"),
+      count("subjects"),
+      count("vehicles"),
+    ]);
 
   const cards = [
     { label: "Teachers", value: teachers, href: "/admin/teachers" },
@@ -31,6 +33,7 @@ export default async function AdminDashboardPage() {
     { label: "Admins", value: admins, href: "/admin/admins" },
     { label: "Classes", value: classes, href: "/admin/classes" },
     { label: "Subjects", value: subjects, href: "/admin/subjects" },
+    { label: "Vehicles", value: vehicles, href: "/admin/vehicles" },
   ];
 
   return (

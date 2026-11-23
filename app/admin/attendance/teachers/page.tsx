@@ -1,5 +1,7 @@
-import { AttendanceNav } from "@/components/admin/attendance-nav";
+import Link from "next/link";
+
 import {
+  buttonSecondaryClassName,
   fieldClassName,
   labelClassName,
 } from "@/components/ui/field";
@@ -30,11 +32,26 @@ export default async function TeacherAttendancePage({
 
   return (
     <div className="space-y-6">
-      <AttendanceNav current="/admin/attendance/teachers" />
-      <p className="text-sm text-zinc-500">
-        Mark daily attendance for all teachers. Existing marks for the selected
-        date are loaded automatically.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Mark daily attendance for all teachers. Existing marks for the
+          selected date are loaded automatically.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/attendance/teachers/history"
+            className={buttonSecondaryClassName}
+          >
+            History
+          </Link>
+          <Link
+            href="/admin/attendance/reports"
+            className={buttonSecondaryClassName}
+          >
+            Reports
+          </Link>
+        </div>
+      </div>
 
       <form className="flex flex-wrap items-end gap-3">
         <div>

@@ -48,24 +48,10 @@ export function FeeStructureForm({
             ))}
           </select>
         </div>
-        <div>
-          <label htmlFor="fee_type" className={labelClassName}>
-            Type
-          </label>
-          <select
-            id="fee_type"
-            name="fee_type"
-            required
-            defaultValue="tuition"
-            className={fieldClassName}
-          >
-            <option value="tuition">Tuition</option>
-            <option value="transport">Transport</option>
-          </select>
-        </div>
+        <input type="hidden" name="fee_type" value="tuition" />
         <div>
           <label htmlFor="amount" className={labelClassName}>
-            Amount
+            Tuition amount
           </label>
           <input
             id="amount"

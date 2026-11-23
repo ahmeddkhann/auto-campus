@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const feeStructureSchema = z.object({
   class_id: z.string().uuid(),
-  fee_type: z.enum(["tuition", "transport"]),
+  fee_type: z.literal("tuition"),
   amount: z.coerce.number().min(0),
   academic_year: z.string().min(4).max(20),
 });

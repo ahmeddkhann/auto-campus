@@ -1,4 +1,5 @@
-import { AttendanceNav } from "@/components/admin/attendance-nav";
+import Link from "next/link";
+
 import { cardClassName, fieldClassName } from "@/components/ui/field";
 import { getTeacherAttendanceReport } from "@/lib/dal/attendance";
 
@@ -17,10 +18,17 @@ export default async function AttendanceReportsPage({
 
   return (
     <div className="space-y-6">
-      <AttendanceNav current="/admin/attendance/reports" />
-      <p className="text-sm text-zinc-500">
-        Summary of present / absent / leave counts per teacher.
-      </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Summary of present / absent / leave counts per teacher.
+        </p>
+        <Link
+          href="/admin/attendance/teachers"
+          className="text-sm font-medium text-blue-600"
+        >
+          ← Mark attendance
+        </Link>
+      </div>
 
       <form className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-3">
         <input

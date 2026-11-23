@@ -19,7 +19,7 @@ export async function createFeeStructure(
   await requireAdmin();
   const parsed = feeStructureSchema.safeParse({
     class_id: formData.get("class_id"),
-    fee_type: formData.get("fee_type"),
+    fee_type: "tuition",
     amount: formData.get("amount"),
     academic_year: formData.get("academic_year"),
   });
@@ -48,7 +48,7 @@ export async function updateFeeStructure(
   const parsed = feeStructureUpdateSchema.safeParse({
     id: formData.get("id"),
     class_id: formData.get("class_id"),
-    fee_type: formData.get("fee_type"),
+    fee_type: "tuition",
     amount: formData.get("amount"),
     academic_year: formData.get("academic_year"),
   });
@@ -61,7 +61,7 @@ export async function updateFeeStructure(
     .from("fee_structures")
     .update({
       class_id: parsed.data.class_id,
-      fee_type: parsed.data.fee_type,
+      fee_type: "tuition",
       amount: parsed.data.amount,
       academic_year: parsed.data.academic_year,
       updated_at: new Date().toISOString(),
@@ -101,16 +101,17 @@ export async function generateStudentFees(
   const { data: structures, error: structureError } = await admin
     .from("fee_structures")
     .select("*")
-    .eq("academic_year", parsed.data.academic_year);
+    .eq("academic_year", parsed.data.academic_year)
+    .eq("fee_type", "tuition");
   if (structureError) return { error: structureError.message };
   if (!structures?.length) {
-    return { error: "No fee structures found for that academic year." };
+    return { error: "No tuition fee structures found for that academic year." };
   }
 
   const { data: students, error: studentError } = await admin
     .from("students")
     .select(
-      "id, uses_transport, section_id, sections(class_id)"
+      "id, vehicle_id, section_id, sections(class_id), vehicles(id, monthly_fee, is_active)"
     )
     .eq("status", "active");
   if (studentError) return { error: studentError.message };
@@ -141,27 +142,55 @@ export async function generateStudentFees(
     const classStructures = structures.filter((s) => s.class_id === classId);
 
     for (const structure of classStructures) {
-      if (structure.fee_type === "transport" && !student.uses_transport) {
-        continue;
-      }
-
       const gross = Number(structure.amount);
-      let discount = 0;
-      if (structure.fee_type === "tuition") {
-        const pct = scholarshipByStudent.get(student.id) ?? 0;
-        discount = (gross * pct) / 100;
-      }
+      const pct = scholarshipByStudent.get(student.id) ?? 0;
+      const discount = (gross * pct) / 100;
       const fineAmount = 0;
       const net = Math.max(gross - discount + fineAmount, 0);
 
       const { error } = await admin.from("student_fees").insert({
         student_id: student.id,
         fee_structure_id: structure.id,
+        vehicle_id: null,
         month: parsed.data.month,
         year: parsed.data.year,
         gross_amount: gross,
         scholarship_discount: discount,
         fine_amount: fineAmount,
+        net_amount: net,
+        status: "pending",
+        due_date: parsed.data.due_date,
+      });
+
+      if (error) {
+        if (
+          error.message.toLowerCase().includes("duplicate") ||
+          error.code === "23505"
+        ) {
+          skipped += 1;
+          continue;
+        }
+        return { error: error.message };
+      }
+      created += 1;
+    }
+
+    const vehicle = Array.isArray(student.vehicles)
+      ? student.vehicles[0]
+      : student.vehicles;
+    if (student.vehicle_id && vehicle?.is_active) {
+      const gross = Number(vehicle.monthly_fee);
+      const net = Math.max(gross, 0);
+
+      const { error } = await admin.from("student_fees").insert({
+        student_id: student.id,
+        fee_structure_id: null,
+        vehicle_id: student.vehicle_id,
+        month: parsed.data.month,
+        year: parsed.data.year,
+        gross_amount: gross,
+        scholarship_discount: 0,
+        fine_amount: 0,
         net_amount: net,
         status: "pending",
         due_date: parsed.data.due_date,

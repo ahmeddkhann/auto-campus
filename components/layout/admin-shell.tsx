@@ -21,6 +21,8 @@ function titleFromPath(pathname: string) {
   if (pathname.startsWith("/admin/classes/sections/")) return "Manage section";
   if (pathname.startsWith("/admin/classes")) return "Classes";
   if (pathname.startsWith("/admin/subjects")) return "Subjects";
+  if (pathname.startsWith("/admin/vehicles/")) return "Edit vehicle";
+  if (pathname.startsWith("/admin/vehicles")) return "Vehicles";
   if (pathname.startsWith("/admin/attendance/teachers/history"))
     return "Teacher attendance history";
   if (pathname.startsWith("/admin/attendance/reports"))

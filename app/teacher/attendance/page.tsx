@@ -1,8 +1,12 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { StudentAttendanceForm } from "@/components/forms/student-attendance-form";
-import { StudentAttendanceNav } from "@/components/teacher/student-attendance-nav";
-import { fieldClassName, labelClassName } from "@/components/ui/field";
+import {
+  buttonSecondaryClassName,
+  fieldClassName,
+  labelClassName,
+} from "@/components/ui/field";
 import { getStudentAttendanceForDate } from "@/lib/dal/attendance";
 import { getTeacherIdForAuth } from "@/lib/dal/auth";
 import {
@@ -42,11 +46,18 @@ export default async function TeacherStudentAttendancePage({
 
   return (
     <div className="space-y-6">
-      <StudentAttendanceNav current="/teacher/attendance" />
-      <p className="text-sm text-zinc-500">
-        Mark daily attendance for students in sections where you are the active
-        head teacher.
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-zinc-500">
+          Mark daily attendance for students in sections where you are the
+          active head teacher.
+        </p>
+        <Link
+          href="/teacher/attendance/history"
+          className={buttonSecondaryClassName}
+        >
+          History
+        </Link>
+      </div>
 
       <form className="flex flex-wrap items-end gap-3">
         <div>

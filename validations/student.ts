@@ -14,7 +14,7 @@ export const createStudentSchema = z.object({
   phone: z.string().max(50).optional().or(z.literal("")),
   section_id: z.string().uuid(),
   status: studentStatusSchema.default("active"),
-  uses_transport: z.coerce.boolean().default(false),
+  vehicle_id: z.string().uuid().optional().or(z.literal("")),
 });
 
 export const updateStudentSchema = createStudentSchema.extend({

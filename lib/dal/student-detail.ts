@@ -10,6 +10,7 @@ export async function getStudentDetail(id: string) {
       `
       *,
       sections(id, name, class_id, classes(id, name)),
+      vehicles(id, name, registration_number, monthly_fee, is_active),
       student_subjects(subject_id, subjects(id, name, code))
     `
     )
